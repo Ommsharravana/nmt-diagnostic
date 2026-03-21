@@ -4,8 +4,19 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+// SelectGroup and SelectLabel used in vertical dropdown
 import { getTestQuestions } from "@/lib/questions";
-import { TestState } from "@/lib/types";
+import { verticals, regions } from "@/lib/yi-data";
+import type { TestState } from "@/lib/types";
 
 interface TestFlowProps {
   state: TestState;
@@ -128,25 +139,74 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Vertical Select */}
               <div className="space-y-2">
-                <label htmlFor="verticalName" className="text-sm font-medium text-slate-700">
-                  Vertical Name <span className="text-red-500">*</span>
+                <label className="text-sm font-medium text-slate-700">
+                  Vertical <span className="text-red-500">*</span>
                 </label>
-                <input
-                  id="verticalName"
-                  type="text"
-                  maxLength={60}
+                <Select
                   value={state.verticalName}
-                  onChange={(e) => updateField("verticalName", e.target.value)}
-                  placeholder="e.g., MASOOM, Health, Climate Change..."
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  aria-describedby={errors.verticalName ? "verticalName-error" : undefined}
-                />
+                  onValueChange={(value) => value && updateField("verticalName", value)}
+                >
+                  <SelectTrigger
+                    className="w-full h-12 px-4 text-base bg-white"
+                    aria-describedby={errors.verticalName ? "verticalName-error" : undefined}
+                  >
+                    <SelectValue placeholder="Select a vertical..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Nation Building Projects</SelectLabel>
+                      {verticals
+                        .filter((v) => v.category === "project")
+                        .map((v) => (
+                          <SelectItem key={v.name} value={v.name}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel>Youth Leadership Initiatives</SelectLabel>
+                      {verticals
+                        .filter((v) => v.category === "initiative")
+                        .map((v) => (
+                          <SelectItem key={v.name} value={v.name}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
                 {errors.verticalName && (
                   <p id="verticalName-error" className="text-sm text-red-500">{errors.verticalName}</p>
                 )}
               </div>
 
+              {/* Region Select */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">
+                  Region{" "}
+                  <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <Select
+                  value={state.region}
+                  onValueChange={(value) => value && updateField("region", value)}
+                >
+                  <SelectTrigger className="w-full h-12 px-4 text-base bg-white">
+                    <SelectValue placeholder="Select region..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="National">National</SelectItem>
+                    {regions.map((r) => (
+                      <SelectItem key={r.code} value={r.code}>
+                        {r.code} — {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Respondent Name */}
               <div className="space-y-2">
                 <label htmlFor="respondentName" className="text-sm font-medium text-slate-700">
                   Your Name{" "}
@@ -161,22 +221,6 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                     updateField("respondentName", e.target.value)
                   }
                   placeholder="Name of the respondent"
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="region" className="text-sm font-medium text-slate-700">
-                  Region / Chapter{" "}
-                  <span className="text-slate-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  id="region"
-                  type="text"
-                  maxLength={60}
-                  value={state.region}
-                  onChange={(e) => updateField("region", e.target.value)}
-                  placeholder="e.g., SRTN, National, Erode..."
                   className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
