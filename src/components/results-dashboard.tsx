@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,9 @@ export default function ResultsDashboard({
   onRetake,
 }: ResultsDashboardProps) {
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const radarData = results.dimensions.map((d) => ({
     dimension: d.dimension.shortName,
@@ -61,6 +64,8 @@ export default function ResultsDashboard({
   const overallRec = getOverallRecommendation(results.percentage);
 
   const handleExportPDF = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
       const html2canvas = (await import("html2canvas")).default;
       const jsPDF = (await import("jspdf")).default;
@@ -97,10 +102,12 @@ export default function ResultsDashboard({
       );
     } catch {
       alert("PDF export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  const handleCopyResults = () => {
+  const handleCopyResults = async () => {
     const text = [
       `NMT Vertical Diagnostic — ${results.verticalName}`,
       `Date: ${results.date}`,
@@ -121,8 +128,15 @@ export default function ResultsDashboard({
       .filter(Boolean)
       .join("\n");
 
-    navigator.clipboard.writeText(text);
-    alert("Results copied to clipboard!");
+    try {
+      await navigator.clipboard.writeText(text);
+      setIsCopied(true);
+      setCopyFailed(false);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
+    }
   };
 
   return (
@@ -226,7 +240,7 @@ export default function ResultsDashboard({
                 <DimensionCard
                   key={dim.dimension.index}
                   result={dim}
-                  isPriority={index < 2 && dim.health !== "Strong"}
+                  isPriority={index < 2}
                 />
               ))}
           </div>
@@ -243,9 +257,7 @@ export default function ResultsDashboard({
             {overallRec.description}
           </p>
 
-          {results.weakest
-            .filter((d) => d.health !== "Strong")
-            .map((dim) => {
+          {results.weakest.slice(0, 2).map((dim) => {
               const recs = getRecommendations(dim.dimension.name, dim.health);
               return (
                 <Card
@@ -307,15 +319,20 @@ export default function ResultsDashboard({
                         key={q.id}
                         className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-slate-50"
                       >
-                        <div className="flex gap-0.5 shrink-0">
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <div
-                              key={n}
-                              className={`w-2 h-2 rounded-full ${
-                                n <= score ? "bg-blue-500" : "bg-slate-200"
-                              }`}
-                            />
-                          ))}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <div
+                                key={n}
+                                className={`w-2 h-2 rounded-full ${
+                                  n <= score ? "bg-blue-500" : "bg-slate-200"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-slate-400 tabular-nums">
+                            {score}/5
+                          </span>
                         </div>
                         <span className="text-slate-600 leading-snug">
                           {q.text}
@@ -336,15 +353,17 @@ export default function ResultsDashboard({
           onClick={handleExportPDF}
           variant="outline"
           className="h-12 px-6 rounded-xl"
+          disabled={isExporting}
         >
-          Download PDF Report
+          {isExporting ? "Generating PDF..." : "Download PDF Report"}
         </Button>
         <Button
           onClick={handleCopyResults}
           variant="outline"
           className="h-12 px-6 rounded-xl"
+          disabled={isCopied}
         >
-          Copy Results
+          {isCopied ? "Copied!" : copyFailed ? "Failed to copy" : "Copy Results"}
         </Button>
         <Button
           onClick={onRetake}

@@ -48,18 +48,31 @@ export default function Home() {
   };
 
   return (
-    <main className="flex-1">
-      {view === "landing" && <LandingPage onStart={handleStartTest} />}
-      {view === "test" && (
-        <TestFlow
-          state={testState}
-          setState={setTestState}
-          onComplete={handleTestComplete}
-        />
-      )}
-      {view === "results" && results && (
-        <ResultsDashboard results={results} onRetake={handleRetake} />
-      )}
-    </main>
+    <>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
+      <main className="flex-1">
+        <div key={view} className="animate-fade-in">
+          {view === "landing" && <LandingPage onStart={handleStartTest} />}
+          {view === "test" && (
+            <TestFlow
+              state={testState}
+              setState={setTestState}
+              onComplete={handleTestComplete}
+            />
+          )}
+          {view === "results" && results && (
+            <ResultsDashboard results={results} onRetake={handleRetake} />
+          )}
+        </div>
+      </main>
+    </>
   );
 }

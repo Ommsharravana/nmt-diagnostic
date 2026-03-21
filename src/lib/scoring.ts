@@ -117,7 +117,7 @@ export function calculateResults(
       dimension: dim,
       score,
       maxScore,
-      percentage: Math.round((score / maxScore) * 100),
+      percentage: Math.round((score / maxScore) * 1000) / 10,
       health: getDimensionHealth(score),
       answers: dimAnswers,
     };
@@ -125,7 +125,7 @@ export function calculateResults(
 
   const totalScore = dimensionResults.reduce((sum, d) => sum + d.score, 0);
   const maxScore = 175;
-  const percentage = Math.round((totalScore / maxScore) * 100);
+  const percentage = Math.round((totalScore / maxScore) * 1000) / 10;
 
   // Sort by score ascending for weakest
   const sorted = [...dimensionResults].sort((a, b) => a.score - b.score);

@@ -16,6 +16,22 @@ export const metadata: Metadata = {
   title: "NMT Vertical Diagnostic Test",
   description:
     "Assess the maturity of your Yi vertical across 7 key dimensions. A diagnostic tool by Young Indians National Management Team.",
+  openGraph: {
+    title: "NMT Vertical Diagnostic Test — Young Indians",
+    description:
+      "35-question maturity assessment across 7 dimensions. Instant radar chart, scoring, and recommendations for Yi vertical leaders.",
+    type: "website",
+    siteName: "Young Indians NMT",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NMT Vertical Diagnostic Test",
+    description:
+      "35-question maturity assessment for Yi vertical leaders. Instant results.",
+  },
+  other: {
+    "color-scheme": "light only",
+  },
 };
 
 export default function RootLayout({
@@ -26,7 +42,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`light ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
         {children}

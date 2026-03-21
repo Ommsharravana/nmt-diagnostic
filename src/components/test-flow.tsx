@@ -113,10 +113,11 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label htmlFor="verticalName" className="text-sm font-medium text-slate-700">
                   Vertical Name <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="verticalName"
                   type="text"
                   value={state.verticalName}
                   onChange={(e) => updateField("verticalName", e.target.value)}
@@ -129,11 +130,12 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label htmlFor="respondentName" className="text-sm font-medium text-slate-700">
                   Your Name{" "}
                   <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
+                  id="respondentName"
                   type="text"
                   value={state.respondentName}
                   onChange={(e) =>
@@ -145,11 +147,12 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label htmlFor="region" className="text-sm font-medium text-slate-700">
                   Region / Chapter{" "}
                   <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
+                  id="region"
                   type="text"
                   value={state.region}
                   onChange={(e) => updateField("region", e.target.value)}
@@ -268,7 +271,7 @@ function DimensionStep({
             </p>
 
             {/* Rating buttons */}
-            <div className="flex gap-2">
+            <div className="flex gap-2" role="group" aria-label={`Rating for statement ${index + 1}`}>
               {ratingLabels.map((rating) => (
                 <button
                   key={rating.value}
@@ -279,6 +282,7 @@ function DimensionStep({
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                   title={rating.label}
+                  aria-label={`Rate statement ${index + 1} as ${rating.value} - ${rating.label}`}
                 >
                   {rating.short}
                 </button>
