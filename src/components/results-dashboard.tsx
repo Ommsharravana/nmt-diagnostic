@@ -98,7 +98,7 @@ export default function ResultsDashboard({
       }
 
       pdf.save(
-        `NMT-Diagnostic-${results.verticalName.replace(/\s+/g, "-")}.pdf`
+        `NMT-Diagnostic-${results.verticalName.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-")}.pdf`
       );
     } catch {
       alert("PDF export failed. Please try again.");
@@ -111,8 +111,8 @@ export default function ResultsDashboard({
     const text = [
       `NMT Vertical Diagnostic — ${results.verticalName}`,
       `Date: ${results.date}`,
-      results.respondentName ? `Respondent: ${results.respondentName}` : "",
-      results.region ? `Region: ${results.region}` : "",
+      results.respondentName ? `Respondent: ${results.respondentName}` : null,
+      results.region ? `Region: ${results.region}` : null,
       "",
       `Overall: ${results.totalScore}/${results.maxScore} (${results.percentage}%)`,
       `Maturity: Level ${results.maturity.level} — ${results.maturity.state}`,
@@ -125,7 +125,7 @@ export default function ResultsDashboard({
       "",
       `Priority Areas: ${results.weakest.map((d) => d.dimension.name).join(", ")}`,
     ]
-      .filter(Boolean)
+      .filter((line): line is string => line !== null)
       .join("\n");
 
     try {
@@ -294,6 +294,38 @@ export default function ResultsDashboard({
               );
             })}
         </div>
+
+        {/* Strengths */}
+        {results.strongest.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900 mb-3">
+              What You&apos;re Doing Well
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {results.strongest.map((dim) => (
+                <Card key={dim.dimension.index} className="border-0 shadow-sm bg-emerald-50/50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-emerald-600 font-bold text-lg">
+                        {dim.score}/25
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium border ${healthBgColors[dim.health]}`}
+                      >
+                        {dim.health}
+                      </span>
+                    </div>
+                    <span className="font-medium text-slate-800 text-sm">
+                      {dim.dimension.name}
+                    </span>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <Separator />
 
         {/* Score Detail */}
         <details className="group">

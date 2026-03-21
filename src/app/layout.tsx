@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     siteName: "Young Indians NMT",
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "NMT Vertical Diagnostic Test",
     description:
       "35-question maturity assessment for Yi vertical leaders. Instant results.",

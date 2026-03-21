@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import LandingPage from "@/components/landing-page";
 import TestFlow from "@/components/test-flow";
 import ResultsDashboard from "@/components/results-dashboard";
@@ -19,6 +19,17 @@ export default function Home() {
     answers: {},
   });
   const [results, setResults] = useState<OverallResult | null>(null);
+
+  // Warn before browser back/refresh if test is in progress
+  useEffect(() => {
+    if (view === "test") {
+      const handler = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+      };
+      window.addEventListener("beforeunload", handler);
+      return () => window.removeEventListener("beforeunload", handler);
+    }
+  }, [view]);
 
   const handleStartTest = () => {
     setView("test");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -26,8 +26,17 @@ const ratingLabels = [
 
 export default function TestFlow({ state, setState, onComplete }: TestFlowProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const stepHeadingRef = useRef<HTMLDivElement>(null);
 
-  const progress = (state.currentStep / TOTAL_STEPS) * 100;
+  // Progress: 0% at step 0, 100% at last step
+  const progress = (state.currentStep / (TOTAL_STEPS - 1)) * 100;
+
+  // Focus the step heading on step change for screen readers
+  useEffect(() => {
+    if (state.currentStep > 0 && stepHeadingRef.current) {
+      stepHeadingRef.current.focus();
+    }
+  }, [state.currentStep]);
 
   const updateField = (field: keyof TestState, value: string) => {
     setState({ ...state, [field]: value });
@@ -89,6 +98,13 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
   return (
     <div className="min-h-screen py-6 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
+        {/* Screen reader announcement for step changes */}
+        <div aria-live="polite" className="sr-only">
+          {state.currentStep === 0
+            ? "Getting started — enter your vertical information"
+            : `Dimension ${state.currentStep} of ${testDimensions.length}: ${testDimensions[state.currentStep - 1]?.name}`}
+        </div>
+
         {/* Progress Header */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm text-slate-500">
@@ -119,13 +135,15 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                 <input
                   id="verticalName"
                   type="text"
+                  maxLength={60}
                   value={state.verticalName}
                   onChange={(e) => updateField("verticalName", e.target.value)}
                   placeholder="e.g., MASOOM, Health, Climate Change..."
                   className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  aria-describedby={errors.verticalName ? "verticalName-error" : undefined}
                 />
                 {errors.verticalName && (
-                  <p className="text-sm text-red-500">{errors.verticalName}</p>
+                  <p id="verticalName-error" className="text-sm text-red-500">{errors.verticalName}</p>
                 )}
               </div>
 
@@ -137,6 +155,7 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                 <input
                   id="respondentName"
                   type="text"
+                  maxLength={60}
                   value={state.respondentName}
                   onChange={(e) =>
                     updateField("respondentName", e.target.value)
@@ -154,6 +173,7 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                 <input
                   id="region"
                   type="text"
+                  maxLength={60}
                   value={state.region}
                   onChange={(e) => updateField("region", e.target.value)}
                   placeholder="e.g., SRTN, National, Erode..."
@@ -177,6 +197,7 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
         {state.currentStep > 0 &&
           state.currentStep <= testDimensions.length && (
             <DimensionStep
+              ref={stepHeadingRef}
               dimension={testDimensions[state.currentStep - 1]}
               answers={state.answers}
               onAnswer={setAnswer}
@@ -210,19 +231,18 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
 }
 
 // Sub-component for each dimension's questions
-function DimensionStep({
-  dimension,
-  answers,
-  onAnswer,
-  error,
-  stepNumber,
-}: {
-  dimension: ReturnType<typeof getTestQuestions>[number];
-  answers: Record<string, number>;
-  onAnswer: (id: string, score: number) => void;
-  error?: string;
-  stepNumber: number;
-}) {
+import { forwardRef } from "react";
+
+const DimensionStep = forwardRef<
+  HTMLDivElement,
+  {
+    dimension: ReturnType<typeof getTestQuestions>[number];
+    answers: Record<string, number>;
+    onAnswer: (id: string, score: number) => void;
+    error?: string;
+    stepNumber: number;
+  }
+>(function DimensionStep({ dimension, answers, onAnswer, error, stepNumber }, ref) {
   const dimensionColors = [
     "from-blue-500 to-blue-600",
     "from-indigo-500 to-indigo-600",
@@ -237,7 +257,9 @@ function DimensionStep({
     <div className="space-y-4">
       {/* Dimension header */}
       <div
-        className={`bg-gradient-to-r ${dimensionColors[stepNumber - 1]} rounded-xl p-6 text-white shadow-lg`}
+        ref={ref}
+        tabIndex={-1}
+        className={`bg-gradient-to-r ${dimensionColors[stepNumber - 1]} rounded-xl p-6 text-white shadow-lg outline-none`}
       >
         <p className="text-sm font-medium opacity-80">
           Dimension {stepNumber} of 7
@@ -249,7 +271,7 @@ function DimensionStep({
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600" role="alert">
           {error}
         </div>
       )}
@@ -299,4 +321,4 @@ function DimensionStep({
       ))}
     </div>
   );
-}
+});
