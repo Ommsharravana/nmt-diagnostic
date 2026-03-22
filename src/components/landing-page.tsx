@@ -90,8 +90,18 @@ export default function LandingPage({ onStart }: LandingPageProps) {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-4 text-xs text-slate-400">
-        Young Indians — CII &middot; NMT Vertical Diagnostic Tool
+      <footer className="text-center py-4 space-y-1">
+        <div className="flex justify-center gap-4 text-xs">
+          <a href="/manage" className="text-blue-500 hover:text-blue-700 underline underline-offset-2">
+            Manage Questions
+          </a>
+          <a href="/demo" className="text-blue-500 hover:text-blue-700 underline underline-offset-2">
+            View Demo
+          </a>
+        </div>
+        <p className="text-xs text-slate-400">
+          Young Indians — CII &middot; NMT Vertical Diagnostic Tool
+        </p>
       </footer>
     </div>
   );

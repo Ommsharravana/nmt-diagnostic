@@ -1,7 +1,6 @@
 import { Dimension } from "./types";
 
 // Full question bank from the Excel — 51 questions across 7 dimensions
-// First 5 per dimension are marked selected=true (matching Sample sheet)
 
 const rawQuestions: { dimension: string; shortName: string; questions: string[] }[] = [
   {
@@ -99,7 +98,8 @@ const rawQuestions: { dimension: string; shortName: string; questions: string[] 
   },
 ];
 
-export const dimensions: Dimension[] = rawQuestions.map((dim, dIndex) => ({
+// Build full dimension array with all questions
+export const allDimensions: Dimension[] = rawQuestions.map((dim, dIndex) => ({
   index: dIndex,
   name: dim.dimension,
   shortName: dim.shortName,
@@ -108,19 +108,72 @@ export const dimensions: Dimension[] = rawQuestions.map((dim, dIndex) => ({
     dimensionIndex: dIndex,
     questionNumber: qIndex + 1,
     text,
-    selected: qIndex < 5, // First 5 are the active test questions
+    selected: qIndex < 5, // default: first 5
   })),
 }));
 
-// Get only the 35 selected questions for the test
-export function getTestQuestions(): Dimension[] {
-  return dimensions.map((dim) => ({
-    ...dim,
-    questions: dim.questions.filter((q) => q.selected),
-  }));
+// Default selections: first 5 per dimension
+function getDefaultSelections(): Record<string, string[]> {
+  const defaults: Record<string, string[]> = {};
+  for (const dim of allDimensions) {
+    defaults[dim.index.toString()] = dim.questions
+      .slice(0, 5)
+      .map((q) => q.id);
+  }
+  return defaults;
 }
 
-// Get all questions (for potential admin use later)
-export function getAllQuestions(): Dimension[] {
-  return dimensions;
+const STORAGE_KEY = "nmt-question-selections";
+
+// Load saved selections from localStorage (or use defaults)
+export function getSelections(): Record<string, string[]> {
+  if (typeof window === "undefined") return getDefaultSelections();
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Validate: must have 7 dimensions with 5 each
+      const valid = allDimensions.every(
+        (dim) =>
+          parsed[dim.index.toString()] &&
+          parsed[dim.index.toString()].length === 5
+      );
+      if (valid) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return getDefaultSelections();
 }
+
+// Save selections to localStorage
+export function saveSelections(selections: Record<string, string[]>) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(selections));
+}
+
+// Reset to defaults
+export function resetSelections() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// Get test questions based on current selections
+export function getTestQuestions(): Dimension[] {
+  const selections = getSelections();
+  return allDimensions.map((dim) => {
+    const selectedIds = new Set(selections[dim.index.toString()] || []);
+    return {
+      ...dim,
+      questions: dim.questions.filter((q) => selectedIds.has(q.id)),
+    };
+  });
+}
+
+// Get all questions (full bank)
+export function getAllQuestions(): Dimension[] {
+  return allDimensions;
+}
+
+// For backward compatibility
+export const dimensions = allDimensions;
