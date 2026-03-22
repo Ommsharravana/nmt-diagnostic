@@ -1,4 +1,5 @@
 // Yi India organizational data — verticals and regions
+// Source: National-Yi/Pathfinder-2026 one-pagers (official Yi data)
 
 export interface Vertical {
   name: string;
@@ -23,67 +24,14 @@ export const verticals: Vertical[] = [
 export interface Region {
   code: string;
   name: string;
-  chapters: string[];
 }
 
+// Official Yi regions from Pathfinder 2026 one-pagers
 export const regions: Region[] = [
-  {
-    code: "NR",
-    name: "Northern Region",
-    chapters: [
-      "Amritsar", "Chandigarh", "Delhi", "Dehradun", "Faridabad",
-      "Gurgaon", "Jaipur", "Jalandhar", "Jammu", "Jodhpur",
-      "Karnal", "Lucknow", "Ludhiana", "Noida", "Panchkula",
-      "Udaipur", "Varanasi",
-    ],
-  },
-  {
-    code: "WR",
-    name: "Western Region",
-    chapters: [
-      "Ahmedabad", "Baroda", "Goa", "Indore", "Mumbai",
-      "Nagpur", "Nashik", "Pune", "Rajkot", "Surat", "Thane",
-    ],
-  },
-  {
-    code: "ER",
-    name: "Eastern Region",
-    chapters: [
-      "Bhubaneswar", "Guwahati", "Jamshedpur", "Kolkata",
-      "Patna", "Ranchi", "Rourkela", "Siliguri",
-    ],
-  },
-  {
-    code: "SR",
-    name: "Southern Region",
-    chapters: [
-      "Bengaluru", "Hubli", "Hyderabad", "Kochi",
-      "Mangaluru", "Mysuru", "Trivandrum", "Visakhapatnam",
-    ],
-  },
-  {
-    code: "SRTN",
-    name: "Southern Region Tamil Nadu",
-    chapters: [
-      "Chennai", "Coimbatore", "Erode", "Hosur", "Madurai",
-      "Salem", "Tirupur", "Trichy", "Vellore",
-    ],
-  },
-  {
-    code: "CR",
-    name: "Central Region",
-    chapters: [
-      "Bhopal", "Chhattisgarh", "Jabalpur",
-    ],
-  },
+  { code: "NR", name: "Northern Region" },
+  { code: "WR", name: "Western Region" },
+  { code: "ER", name: "Eastern Region" },
+  { code: "NER", name: "North Eastern Region" },
+  { code: "SRTN", name: "Southern Region Tamil Nadu" },
+  { code: "SRTKKA", name: "Southern Region TK KA" },
 ];
-
-// Flat list of all chapters for quick lookup
-export function getAllChapters(): string[] {
-  return regions.flatMap((r) => r.chapters).sort();
-}
-
-// Get region by chapter name
-export function getRegionForChapter(chapter: string): Region | undefined {
-  return regions.find((r) => r.chapters.includes(chapter));
-}
