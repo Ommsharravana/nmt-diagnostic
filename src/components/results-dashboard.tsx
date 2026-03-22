@@ -1,15 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { OverallResult, DimensionResult, HealthStatus } from "@/lib/types";
-import {
-  getRecommendations,
-  getOverallRecommendation,
-} from "@/lib/recommendations";
+import { getRecommendations } from "@/lib/recommendations";
+import { generateDeepInsights } from "@/lib/insights";
 import {
   RadarChart,
   PolarGrid,
@@ -55,13 +53,13 @@ export default function ResultsDashboard({
   const [isCopied, setIsCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
 
+  const insights = useMemo(() => generateDeepInsights(results), [results]);
+
   const radarData = results.dimensions.map((d) => ({
     dimension: d.dimension.shortName,
     score: d.score,
     fullMark: 25,
   }));
-
-  const overallRec = getOverallRecommendation(results.percentage);
 
   const handleExportPDF = async () => {
     if (isExporting) return;
@@ -69,34 +67,27 @@ export default function ResultsDashboard({
     try {
       const html2canvas = (await import("html2canvas")).default;
       const jsPDF = (await import("jspdf")).default;
-
       const element = dashboardRef.current;
       if (!element) return;
-
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#f8fafc",
       });
-
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const imgWidth = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
       let heightLeft = imgHeight;
       let position = 0;
-
       pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= 297;
-
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
         heightLeft -= 297;
       }
-
       pdf.save(
         `NMT-Diagnostic-${results.verticalName.replace(/[^a-zA-Z0-9-_]/g, "-").replace(/-+/g, "-")}.pdf`
       );
@@ -119,15 +110,15 @@ export default function ResultsDashboard({
       "",
       "Dimension Scores:",
       ...results.dimensions.map(
-        (d) =>
-          `  ${d.dimension.name}: ${d.score}/25 (${d.health})`
+        (d) => `  ${d.dimension.name}: ${d.score}/25 (${d.health})`
       ),
       "",
-      `Priority Areas: ${results.weakest.map((d) => d.dimension.name).join(", ")}`,
+      `Systemic Diagnosis: ${insights.systemicDiagnosis}`,
+      "",
+      `#1 Focus: ${insights.oneThingToFocus}`,
     ]
       .filter((line): line is string => line !== null)
       .join("\n");
-
     try {
       await navigator.clipboard.writeText(text);
       setIsCopied(true);
@@ -145,7 +136,7 @@ export default function ResultsDashboard({
         {/* Header */}
         <div className="text-center space-y-2">
           <p className="text-sm text-slate-500 font-medium">
-            NMT Vertical Diagnostic Test Results
+            NMT Vertical Diagnostic Report
           </p>
           <h1 className="text-3xl font-bold text-slate-900">
             {results.verticalName}
@@ -157,7 +148,7 @@ export default function ResultsDashboard({
           </p>
         </div>
 
-        {/* Maturity Level Badge */}
+        {/* ===== SECTION 1: MATURITY LEVEL ===== */}
         <Card
           className={`border-0 shadow-lg bg-gradient-to-r ${maturityColors[results.maturity.level]} text-white overflow-hidden`}
         >
@@ -175,26 +166,43 @@ export default function ResultsDashboard({
               {results.maturity.state}
             </div>
             <div className="mt-4 flex items-center justify-center gap-6 text-sm opacity-80">
-              <span>
-                Score: {results.totalScore}/{results.maxScore}
-              </span>
+              <span>Score: {results.totalScore}/{results.maxScore}</span>
               <span>|</span>
               <span>{results.percentage}%</span>
-            </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {results.maturity.symptoms.map((s, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1 rounded-full bg-white/20 text-xs"
-                >
-                  {s}
-                </span>
-              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Radar Chart */}
+        {/* ===== SECTION 2: SYSTEMIC DIAGNOSIS ===== */}
+        <Card className="border-0 shadow-md bg-slate-900 text-white">
+          <CardContent className="p-6">
+            <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">
+              Systemic Diagnosis
+            </p>
+            <p className="text-base leading-relaxed">
+              {insights.systemicDiagnosis}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* ===== SECTION 3: THE ONE THING ===== */}
+        <Card className="border-0 shadow-md border-l-4 border-l-blue-500 bg-blue-50">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl shrink-0 mt-0.5">1</span>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-blue-600 font-semibold mb-1">
+                  The One Thing to Focus On
+                </p>
+                <p className="text-sm text-slate-800 leading-relaxed">
+                  {insights.oneThingToFocus}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ===== SECTION 4: RADAR CHART ===== */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Dimension Overview</CardTitle>
@@ -228,7 +236,7 @@ export default function ResultsDashboard({
           </CardContent>
         </Card>
 
-        {/* Dimension Cards */}
+        {/* ===== SECTION 5: DIMENSION BREAKDOWN ===== */}
         <div>
           <h2 className="text-lg font-semibold text-slate-900 mb-3">
             Dimension Breakdown
@@ -246,56 +254,277 @@ export default function ResultsDashboard({
           </div>
         </div>
 
-        <Separator />
+        {/* ===== SECTION 6: CORRELATION INSIGHTS (Patterns) ===== */}
+        {insights.correlations.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 mb-3">
+                Pattern Analysis
+              </h2>
+              <div className="space-y-3">
+                {insights.correlations.map((c, i) => (
+                  <Card key={i} className="border-0 shadow-sm">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-purple-300 text-purple-700 bg-purple-50"
+                        >
+                          Pattern
+                        </Badge>
+                        <span className="font-semibold text-slate-800 text-sm">
+                          {c.pattern}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 mb-2">
+                        {c.diagnosis}
+                      </p>
+                      <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                        <p className="text-xs uppercase tracking-wider text-slate-400 mb-1">
+                          Prescription
+                        </p>
+                        <p className="text-sm text-slate-800 font-medium">
+                          {c.prescription}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Recommendations */}
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900 mb-1">
-            {overallRec.title}
-          </h2>
-          <p className="text-sm text-slate-500 mb-4">
-            {overallRec.description}
-          </p>
-
-          {results.weakest.slice(0, 2).map((dim) => {
-              const recs = getRecommendations(dim.dimension.name, dim.health);
-              return (
-                <Card
-                  key={dim.dimension.index}
-                  className="border-0 shadow-md mb-3"
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="destructive" className="text-xs">
-                        Priority
-                      </Badge>
-                      <span className="font-semibold text-slate-800">
-                        {dim.dimension.name}
-                      </span>
-                      <span className="text-sm text-slate-400">
-                        ({dim.score}/25 · {dim.health})
+        {/* ===== SECTION 7: RED FLAGS ===== */}
+        {insights.redFlags.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">
+                Red Flags
+              </h2>
+              <p className="text-sm text-slate-500 mb-3">
+                Statements scored 1-2 — these indicate fundamental gaps, not minor weaknesses
+              </p>
+              <div className="space-y-2">
+                {insights.redFlags.slice(0, 10).map((rf, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 text-sm py-2.5 px-4 rounded-lg bg-red-50 border border-red-100"
+                  >
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold mt-0.5">
+                      {rf.score}
+                    </span>
+                    <div>
+                      <span className="text-red-800">{rf.question}</span>
+                      <span className="text-red-400 text-xs ml-2">
+                        ({rf.dimension})
                       </span>
                     </div>
-                    <ul className="space-y-2">
-                      {recs.map((rec, i) => (
-                        <li
-                          key={i}
-                          className="flex items-start gap-2 text-sm text-slate-600"
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ===== SECTION 8: LEVERAGE POINTS ===== */}
+        {insights.leveragePoints.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900 mb-1">
+                Highest-Leverage Interventions
+              </h2>
+              <p className="text-sm text-slate-500 mb-3">
+                Dimensions where improvement creates a cascade effect across multiple areas
+              </p>
+              <div className="space-y-3">
+                {insights.leveragePoints.map((lp, i) => (
+                  <Card
+                    key={i}
+                    className={`border-0 shadow-sm ${lp.impact === "high" ? "ring-2 ring-amber-200" : ""}`}
+                  >
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge
+                          className={`text-xs ${
+                            lp.impact === "high"
+                              ? "bg-amber-500"
+                              : "bg-slate-500"
+                          }`}
                         >
-                          <span className="text-blue-500 mt-0.5 shrink-0">
-                            →
+                          {lp.impact === "high"
+                            ? "High Leverage"
+                            : "Medium Leverage"}
+                        </Badge>
+                        <span className="font-semibold text-slate-800 text-sm">
+                          {lp.dimension}
+                        </span>
+                        <span className="text-slate-400 text-xs">
+                          ({lp.score}/25)
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 mb-2">
+                        {lp.reason}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lp.cascadeTargets.map((target, j) => (
+                          <span
+                            key={j}
+                            className="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-xs text-amber-700"
+                          >
+                            Unlocks: {target.split(" & ")[0]}
                           </span>
-                          {rec}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ===== SECTION 9: GAP ANALYSIS ===== */}
+        {insights.gapAnalysis && (
+          <>
+            <Separator />
+            <Card className="border-0 shadow-md bg-gradient-to-r from-indigo-50 to-blue-50">
+              <CardContent className="p-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-3">
+                  Path to Level {insights.gapAnalysis.nextLevel} —{" "}
+                  {insights.gapAnalysis.nextLevelName}
+                </h2>
+                <p className="text-sm text-slate-600 mb-4">
+                  You need{" "}
+                  <span className="font-bold text-indigo-700">
+                    {insights.gapAnalysis.pointsNeeded} more points
+                  </span>{" "}
+                  to reach the next maturity level. Here&apos;s the fastest path:
+                </p>
+                <div className="space-y-2">
+                  {insights.gapAnalysis.quickestPath.map((p, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between bg-white rounded-lg p-3 border border-indigo-100"
+                    >
+                      <div>
+                        <span className="font-medium text-slate-800 text-sm">
+                          {p.dimension}
+                        </span>
+                        <span className="text-slate-400 text-xs ml-2">
+                          Currently {p.currentScore}/25
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-indigo-600 font-bold text-sm">
+                          +{p.potential} possible
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {/* ===== SECTION 10: 90-DAY ACTION PLAN ===== */}
+        <Separator />
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">
+            90-Day Action Plan
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Sequenced interventions — fix the root cause first, then build systems, then measure
+          </p>
+          <div className="space-y-4">
+            {insights.plan90Day.map((month, i) => (
+              <Card key={i} className="border-0 shadow-sm">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                        i === 0
+                          ? "bg-red-500"
+                          : i === 1
+                            ? "bg-amber-500"
+                            : "bg-emerald-500"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="font-semibold text-slate-800">
+                      {month.month}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 ml-10 mb-2">
+                    Focus: {month.dimension} · Target: {month.targetImprovement}
+                  </p>
+                  <ul className="ml-10 space-y-1.5">
+                    {month.actions.map((action, j) => (
+                      <li
+                        key={j}
+                        className="flex items-start gap-2 text-sm text-slate-600"
+                      >
+                        <span className="text-blue-500 mt-0.5 shrink-0">
+                          →
+                        </span>
+                        {action}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
-        {/* Strengths */}
+        {/* ===== SECTION 11: PRIORITY RECOMMENDATIONS (existing) ===== */}
+        <Separator />
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">
+            Detailed Recommendations by Dimension
+          </h2>
+          {results.weakest.slice(0, 2).map((dim) => {
+            const recs = getRecommendations(dim.dimension.name, dim.health);
+            return (
+              <Card
+                key={dim.dimension.index}
+                className="border-0 shadow-md mb-3"
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="destructive" className="text-xs">
+                      Priority
+                    </Badge>
+                    <span className="font-semibold text-slate-800">
+                      {dim.dimension.name}
+                    </span>
+                    <span className="text-sm text-slate-400">
+                      ({dim.score}/25 · {dim.health})
+                    </span>
+                  </div>
+                  <ul className="space-y-2">
+                    {recs.map((rec, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-sm text-slate-600"
+                      >
+                        <span className="text-blue-500 mt-0.5 shrink-0">→</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* ===== SECTION 12: STRENGTHS ===== */}
         {results.strongest.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-slate-900 mb-3">
@@ -303,7 +532,10 @@ export default function ResultsDashboard({
             </h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {results.strongest.map((dim) => (
-                <Card key={dim.dimension.index} className="border-0 shadow-sm bg-emerald-50/50">
+                <Card
+                  key={dim.dimension.index}
+                  className="border-0 shadow-sm bg-emerald-50/50"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-emerald-600 font-bold text-lg">
@@ -325,12 +557,11 @@ export default function ResultsDashboard({
           </div>
         )}
 
+        {/* ===== SECTION 13: FULL SCORE DETAIL ===== */}
         <Separator />
-
-        {/* Score Detail */}
         <details className="group">
           <summary className="cursor-pointer text-sm font-medium text-slate-500 hover:text-slate-700 py-2">
-            View all 35 scores ▸
+            View all 35 individual scores ▸
           </summary>
           <div className="mt-3 space-y-4">
             {results.dimensions.map((dim) => (
@@ -349,7 +580,7 @@ export default function ResultsDashboard({
                     return (
                       <div
                         key={q.id}
-                        className="flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-slate-50"
+                        className={`flex items-center gap-3 text-sm py-1.5 px-3 rounded-lg hover:bg-slate-50 ${score <= 2 ? "bg-red-50/50" : ""}`}
                       >
                         <div className="flex items-center gap-1.5 shrink-0">
                           <div className="flex gap-0.5">
@@ -357,7 +588,11 @@ export default function ResultsDashboard({
                               <div
                                 key={n}
                                 className={`w-2 h-2 rounded-full ${
-                                  n <= score ? "bg-blue-500" : "bg-slate-200"
+                                  n <= score
+                                    ? score <= 2
+                                      ? "bg-red-500"
+                                      : "bg-blue-500"
+                                    : "bg-slate-200"
                                 }`}
                               />
                             ))}
@@ -395,7 +630,11 @@ export default function ResultsDashboard({
           className="h-12 px-6 rounded-xl"
           disabled={isCopied}
         >
-          {isCopied ? "Copied!" : copyFailed ? "Failed to copy" : "Copy Results"}
+          {isCopied
+            ? "Copied!"
+            : copyFailed
+              ? "Failed to copy"
+              : "Copy Results"}
         </Button>
         <Button
           onClick={onRetake}
@@ -406,7 +645,7 @@ export default function ResultsDashboard({
       </div>
 
       <footer className="text-center py-8 text-xs text-slate-400">
-        Young Indians — CII &middot; NMT Vertical Diagnostic Tool
+        Young Indians — CII · NMT Vertical Diagnostic Tool
       </footer>
     </div>
   );
