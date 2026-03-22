@@ -185,6 +185,84 @@ export default function ResultsDashboard({
           </CardContent>
         </Card>
 
+        {/* ===== SECTION 2B: PATHFINDER CONTEXT ===== */}
+        {insights.verticalBrief.context && (
+          <Card className="border-0 shadow-md bg-gradient-to-br from-amber-50 to-orange-50 border-l-4 border-l-amber-400">
+            <CardContent className="p-6 space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-amber-700 font-semibold mb-1">
+                  Pathfinder 2026 Vision
+                </p>
+                <p className="text-sm text-slate-800 italic leading-relaxed">
+                  &ldquo;{insights.verticalBrief.context.vision2026}&rdquo;
+                </p>
+              </div>
+
+              {insights.verticalBrief.pathfinderGaps.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-red-600 font-semibold mb-2">
+                    Pathfinder Alignment Gaps
+                  </p>
+                  <div className="space-y-2">
+                    {insights.verticalBrief.pathfinderGaps.map((gap, i) => (
+                      <p key={i} className="text-sm text-slate-700 pl-3 border-l-2 border-red-300">
+                        {gap}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-3 pt-2">
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">National Contact</p>
+                  <p className="text-xs text-slate-700">{insights.verticalBrief.nationalContact}</p>
+                </div>
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">MYTRI & 3A&apos;s</p>
+                  <p className="text-xs text-slate-700">{insights.verticalBrief.mytriCoverage}</p>
+                </div>
+              </div>
+
+              <div className="bg-white/60 rounded-lg p-3">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Health Card Tip</p>
+                <p className="text-xs text-slate-700">{insights.verticalBrief.healthCardAdvice}</p>
+              </div>
+
+              <div className="bg-white/60 rounded-lg p-3">
+                <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Best Chapter Impact</p>
+                <p className="text-xs text-slate-700">{insights.verticalBrief.bestChapterInsight}</p>
+              </div>
+
+              {insights.verticalBrief.crossVerticalPlays.length > 0 && (
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">Cross-Vertical Plays</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {insights.verticalBrief.crossVerticalPlays.map((play, i) => (
+                      <span key={i} className="px-2 py-1 rounded bg-amber-100 border border-amber-200 text-xs text-amber-800">
+                        {play}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {insights.verticalBrief.upcomingDates.length > 0 && (
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-400 mb-2">Key Dates 2026</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {insights.verticalBrief.upcomingDates.map((d, i) => (
+                      <span key={i} className="px-2 py-1 rounded bg-blue-50 border border-blue-200 text-xs text-blue-700">
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* ===== SECTION 3: THE ONE THING ===== */}
         <Card className="border-0 shadow-md border-l-4 border-l-blue-500 bg-blue-50">
           <CardContent className="p-6">

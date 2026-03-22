@@ -1,4 +1,6 @@
 import { OverallResult, DimensionResult, HealthStatus } from "./types";
+import { verticalContexts, bestChapterFormula, multiTagStrategy } from "./yi-context";
+import type { VerticalContext } from "./yi-context";
 
 // Dimension dependency map — which dimensions are prerequisites for which
 // Based on systems thinking: Strategy → Execution → Impact → Brand → Continuity
@@ -58,6 +60,17 @@ export interface CorrelationInsight {
   prescription: string;
 }
 
+export interface VerticalBrief {
+  context: VerticalContext | null;
+  pathfinderGaps: string[];
+  healthCardAdvice: string;
+  nationalContact: string;
+  bestChapterInsight: string;
+  crossVerticalPlays: string[];
+  mytriCoverage: string;
+  upcomingDates: string[];
+}
+
 export interface DeepInsights {
   redFlags: RedFlag[];
   leveragePoints: LeveragePoint[];
@@ -66,6 +79,7 @@ export interface DeepInsights {
   correlations: CorrelationInsight[];
   oneThingToFocus: string;
   systemicDiagnosis: string;
+  verticalBrief: VerticalBrief;
 }
 
 export function generateDeepInsights(results: OverallResult): DeepInsights {
@@ -105,6 +119,9 @@ export function generateDeepInsights(results: OverallResult): DeepInsights {
   // 7. SYSTEMIC DIAGNOSIS — the narrative of what's happening
   const systemicDiagnosis = generateSystemicDiagnosis(dims, results);
 
+  // 8. VERTICAL-SPECIFIC BRIEF — Pathfinder goals, Health Card, contacts
+  const verticalBrief = generateVerticalBrief(results);
+
   return {
     redFlags,
     leveragePoints,
@@ -113,6 +130,7 @@ export function generateDeepInsights(results: OverallResult): DeepInsights {
     correlations,
     oneThingToFocus,
     systemicDiagnosis,
+    verticalBrief,
   };
 }
 
@@ -517,4 +535,102 @@ function generateSystemicDiagnosis(
 
   // Level 1
   return `${results.verticalName} needs a fundamental rebuild. At ${results.totalScore}/175, most dimensions lack basic structure. This is not a criticism — it's a starting point. The path forward is: (1) Define what this vertical exists to achieve, (2) Create one replicable program, (3) Execute it in 3 chapters with documentation. Build the foundation before worrying about scale.`;
+}
+
+function generateVerticalBrief(results: OverallResult): VerticalBrief {
+  const ctx = verticalContexts[results.verticalName] || null;
+
+  if (!ctx) {
+    return {
+      context: null,
+      pathfinderGaps: [],
+      healthCardAdvice: bestChapterFormula.components.map(c => `${c.name}: ${c.target}`).join(". "),
+      nationalContact: "Refer to Yi National Council for vertical-specific guidance.",
+      bestChapterInsight: `Best Chapter = ${bestChapterFormula.formula}. ${multiTagStrategy}`,
+      crossVerticalPlays: [],
+      mytriCoverage: "Engage all 4 MYTRI stakeholders (Members, Yuva, Thalir, Rural) for maximum health card coverage.",
+      upcomingDates: [],
+    };
+  }
+
+  // Identify Pathfinder goal gaps based on dimension scores
+  const pathfinderGaps: string[] = [];
+  const dims = results.dimensions;
+
+  // Strategy weak → likely not aligned with 2026 vision
+  if (dims[0].score <= 16) {
+    pathfinderGaps.push(
+      `Pathfinder 2026 Vision: "${ctx.vision2026}" — but strategic clarity scores suggest chapters may not be aligned with this vision yet.`
+    );
+  }
+
+  // Execution weak → flagship initiatives probably not standardized
+  if (dims[2].score <= 16) {
+    const top2Initiatives = ctx.flagshipInitiatives.slice(0, 2).join("; ");
+    pathfinderGaps.push(
+      `Key national initiatives (${top2Initiatives}) likely lack standardized execution playbooks across chapters.`
+    );
+  }
+
+  // Impact weak → success metrics probably not being tracked
+  if (dims[4].score <= 16) {
+    const topMetrics = ctx.successMetrics.slice(0, 2).join("; ");
+    pathfinderGaps.push(
+      `Pathfinder success metrics not being tracked: ${topMetrics}. Without measurement, impact cannot be demonstrated at GC/National.`
+    );
+  }
+
+  // Brand weak → visibility gap
+  if (dims[5].score <= 16) {
+    pathfinderGaps.push(
+      `National recognition is at risk. The BCDE engine needs content from ${ctx.name} to amplify — but weak brand scores mean stories aren't being captured or shared.`
+    );
+  }
+
+  // Penetration weak → chapters not executing
+  if (dims[1].score <= 16) {
+    pathfinderGaps.push(
+      `Chapter adoption is low. Many chapters may not be executing ${ctx.name} initiatives — missing the Best Chapter 'Coverage' requirement.`
+    );
+  }
+
+  // Health Card advice specific to this vertical
+  const healthCardAdvice = ctx.healthCardTip;
+
+  // National contact
+  const nationalContact = `National Chair: ${ctx.nationalChair} | SRTN RM: ${ctx.srtnRM}. Reach out for national resources, playbooks, and alignment support.`;
+
+  // Best Chapter insight
+  const weakestComponent = dims[4].score <= 16
+    ? "Impact (can't prove outcomes)"
+    : dims[5].score <= 16
+      ? "Visibility (great work stays invisible)"
+      : dims[2].score <= 16
+        ? "Coverage (inconsistent execution)"
+        : dims[1].score <= 16
+          ? "Coverage (chapters not participating)"
+          : "Documentation (activities not captured in Health Cards)";
+
+  const bestChapterInsight = `Best Chapter formula weakest link for ${ctx.name}: ${weakestComponent}. ${multiTagStrategy}`;
+
+  // Cross-vertical plays
+  const crossVerticalPlays = ctx.crossVerticalOpportunities;
+
+  // MYTRI coverage
+  const { awareness, action, advocacy } = ctx.threeAsEmphasis;
+  const mytriCoverage = `${ctx.name} primarily engages ${ctx.mytriPrimary.join(", ")}. 3A's balance: ${awareness}% Awareness, ${action}% Action, ${advocacy}% Advocacy. Ensure Health Card entries cover all engaged stakeholders.`;
+
+  // Upcoming dates
+  const upcomingDates = ctx.keyDates;
+
+  return {
+    context: ctx,
+    pathfinderGaps,
+    healthCardAdvice,
+    nationalContact,
+    bestChapterInsight,
+    crossVerticalPlays,
+    mytriCoverage,
+    upcomingDates,
+  };
 }
