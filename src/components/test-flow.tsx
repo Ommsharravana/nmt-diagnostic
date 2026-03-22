@@ -160,9 +160,15 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                       {verticals
                         .filter((v) => v.category === "project")
                         .map((v) => (
-                          <SelectItem key={v.name} value={v.name}>
-                            {v.name}
-                          </SelectItem>
+                          <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
+                        ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel>MYTRI Stakeholders</SelectLabel>
+                      {verticals
+                        .filter((v) => v.category === "stakeholder")
+                        .map((v) => (
+                          <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
                         ))}
                     </SelectGroup>
                     <SelectGroup>
@@ -170,9 +176,15 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                       {verticals
                         .filter((v) => v.category === "initiative")
                         .map((v) => (
-                          <SelectItem key={v.name} value={v.name}>
-                            {v.name}
-                          </SelectItem>
+                          <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
+                        ))}
+                    </SelectGroup>
+                    <SelectGroup>
+                      <SelectLabel>Other</SelectLabel>
+                      {verticals
+                        .filter((v) => v.category === "other")
+                        .map((v) => (
+                          <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
                         ))}
                     </SelectGroup>
                   </SelectContent>

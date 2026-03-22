@@ -3,7 +3,7 @@
 
 export interface Vertical {
   name: string;
-  category: "project" | "initiative";
+  category: "project" | "stakeholder" | "initiative" | "other";
 }
 
 export const verticals: Vertical[] = [
@@ -13,12 +13,19 @@ export const verticals: Vertical[] = [
   { name: "Health", category: "project" },
   { name: "Road Safety", category: "project" },
   { name: "Accessibility", category: "project" },
+  // MYTRI Stakeholders
+  { name: "Membership", category: "stakeholder" },
+  { name: "YUVA", category: "stakeholder" },
+  { name: "Thalir", category: "stakeholder" },
+  { name: "Rural Initiatives", category: "stakeholder" },
   // Youth Leadership Initiatives
   { name: "Entrepreneurship", category: "initiative" },
   { name: "Innovation", category: "initiative" },
   { name: "Learning", category: "initiative" },
   { name: "Branding", category: "initiative" },
   { name: "Sports", category: "initiative" },
+  // Other
+  { name: "International Membership", category: "other" },
 ];
 
 export interface Region {
