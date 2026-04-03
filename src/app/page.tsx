@@ -20,7 +20,6 @@ export default function Home() {
   });
   const [results, setResults] = useState<OverallResult | null>(null);
 
-  // Warn before browser back/refresh if test is in progress
   useEffect(() => {
     if (view === "test") {
       const handler = (e: BeforeUnloadEvent) => {
@@ -59,31 +58,20 @@ export default function Home() {
   };
 
   return (
-    <>
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out;
-        }
-      `}</style>
-      <main className="flex-1">
-        <div key={view} className="animate-fade-in">
-          {view === "landing" && <LandingPage onStart={handleStartTest} />}
-          {view === "test" && (
-            <TestFlow
-              state={testState}
-              setState={setTestState}
-              onComplete={handleTestComplete}
-            />
-          )}
-          {view === "results" && results && (
-            <ResultsDashboard results={results} onRetake={handleRetake} />
-          )}
-        </div>
-      </main>
-    </>
+    <main className="flex-1">
+      <div key={view} className="animate-fade-in">
+        {view === "landing" && <LandingPage onStart={handleStartTest} />}
+        {view === "test" && (
+          <TestFlow
+            state={testState}
+            setState={setTestState}
+            onComplete={handleTestComplete}
+          />
+        )}
+        {view === "results" && results && (
+          <ResultsDashboard results={results} onRetake={handleRetake} />
+        )}
+      </div>
+    </main>
   );
 }

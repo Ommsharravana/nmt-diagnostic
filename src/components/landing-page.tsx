@@ -7,81 +7,135 @@ interface LandingPageProps {
 }
 
 const dimensions = [
-  { name: "Strategic Clarity", icon: "🎯" },
-  { name: "Chapter Penetration", icon: "🌍" },
-  { name: "Execution Standards", icon: "⚙️" },
-  { name: "Regional Alignment", icon: "🤝" },
-  { name: "Impact & Data", icon: "📊" },
-  { name: "Brand Visibility", icon: "✨" },
-  { name: "Continuity", icon: "🔄" },
+  { name: "Strategic Clarity", abbr: "SC" },
+  { name: "Chapter Penetration", abbr: "CP" },
+  { name: "Execution Standards", abbr: "ES" },
+  { name: "Regional Alignment", abbr: "RA" },
+  { name: "Impact & Data", abbr: "ID" },
+  { name: "Brand Visibility", abbr: "BV" },
+  { name: "Continuity", abbr: "CS" },
+];
+
+const maturityLevels = [
+  { level: 1, name: "Fragile", color: "#dc2626" },
+  { level: 2, name: "Emerging", color: "#ea580c" },
+  { level: 3, name: "Growing", color: "#ca8a04" },
+  { level: 4, name: "Established", color: "#2563eb" },
+  { level: 5, name: "Flagship", color: "#059669" },
 ];
 
 export default function LandingPage({ onStart }: LandingPageProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Hero */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="max-w-2xl mx-auto text-center space-y-8">
+      {/* Hero — Dark navy with gold accents */}
+      <div className="relative bg-navy overflow-hidden">
+        {/* Subtle geometric pattern */}
+        <div className="absolute inset-0 opacity-[0.04]">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#c4a35a" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="relative z-10 max-w-3xl mx-auto px-6 py-20 sm:py-28 text-center">
           {/* Yi Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-sm font-medium">
-            Young Indians — National Management Team
+          <div className="animate-slide-up stagger-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gold/30 text-gold text-xs font-medium tracking-widest uppercase mb-8">
+            Young Indians &mdash; National Management Team
           </div>
 
           {/* Title */}
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 leading-tight">
-            Vertical Diagnostic
-            <span className="block text-blue-600">Maturity Test</span>
+          <h1 className="animate-slide-up stagger-2 font-display text-5xl sm:text-6xl md:text-7xl text-white leading-[1.1] tracking-tight">
+            Vertical
+            <br />
+            <span className="gold-underline">Diagnostic</span>
           </h1>
 
-          {/* Description */}
-          <p className="text-lg text-slate-600 max-w-lg mx-auto leading-relaxed">
-            Assess your vertical&apos;s health across 7 dimensions. Answer 35
-            questions, get instant insights on maturity level, strengths, and
-            priority areas for improvement.
+          {/* Subtitle */}
+          <p className="animate-slide-up stagger-3 mt-6 text-lg sm:text-xl text-white/50 max-w-lg mx-auto leading-relaxed font-light">
+            Assess maturity across 7 dimensions. Get systemic diagnosis,
+            leverage points, and a 90-day action plan.
           </p>
 
-          {/* Dimension pills */}
-          <div className="flex flex-wrap justify-center gap-2">
+          {/* Dimension tags */}
+          <div className="animate-slide-up stagger-4 mt-10 flex flex-wrap justify-center gap-2">
             {dimensions.map((d) => (
               <span
                 key={d.name}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm text-slate-700 shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-white/10 text-xs text-white/40 font-medium tracking-wide"
               >
-                <span>{d.icon}</span>
-                {d.name}
+                <span className="text-gold/60 font-semibold">{d.abbr}</span>
+                <span className="hidden sm:inline">{d.name}</span>
               </span>
             ))}
           </div>
 
           {/* CTA */}
-          <div className="pt-4">
+          <div className="animate-slide-up stagger-5 mt-12">
             <Button
               onClick={onStart}
               size="lg"
-              className="h-14 px-10 text-lg font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all hover:shadow-xl hover:shadow-blue-200 hover:-translate-y-0.5"
+              className="h-14 px-12 text-base font-semibold rounded-lg bg-gold hover:bg-gold-light text-navy shadow-lg shadow-gold/20 transition-all hover:shadow-xl hover:shadow-gold/30 hover:-translate-y-0.5 tracking-wide"
             >
-              Start Diagnostic
+              Begin Assessment
             </Button>
-            <p className="mt-3 text-sm text-slate-400">
-              Takes about 5 minutes
+            <p className="mt-4 text-xs text-white/30 tracking-wide">
+              35 questions &middot; ~5 minutes &middot; Instant results
             </p>
           </div>
+        </div>
 
-          {/* Scoring preview */}
-          <div className="pt-8 grid grid-cols-5 gap-1 max-w-xs mx-auto">
-            {[
-              { label: "Level 1", color: "bg-red-400" },
-              { label: "Level 2", color: "bg-orange-400" },
-              { label: "Level 3", color: "bg-yellow-400" },
-              { label: "Level 4", color: "bg-blue-400" },
-              { label: "Level 5", color: "bg-emerald-400" },
-            ].map((level) => (
-              <div key={level.label} className="text-center">
+        {/* Maturity scale bar */}
+        <div className="relative z-10 max-w-md mx-auto px-6 pb-16">
+          <div className="animate-slide-up stagger-6 flex gap-1">
+            {maturityLevels.map((m) => (
+              <div key={m.level} className="flex-1 text-center">
                 <div
-                  className={`h-2 rounded-full ${level.color} opacity-60`}
+                  className="h-1.5 rounded-full opacity-50"
+                  style={{ backgroundColor: m.color }}
                 />
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {level.label}
+                <p className="text-[9px] text-white/25 mt-1.5 tracking-wider uppercase">
+                  L{m.level}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* How it works — warm parchment */}
+      <div className="bg-warm-gray py-16 px-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="grid sm:grid-cols-3 gap-8 text-center">
+            {[
+              {
+                step: "01",
+                title: "Assess",
+                desc: "Rate 35 statements across 7 maturity dimensions",
+              },
+              {
+                step: "02",
+                title: "Diagnose",
+                desc: "Get systemic analysis, pattern detection, and root causes",
+              },
+              {
+                step: "03",
+                title: "Act",
+                desc: "Follow a sequenced 90-day plan with Pathfinder-aligned actions",
+              },
+            ].map((item) => (
+              <div key={item.step}>
+                <div className="font-display text-3xl text-gold-muted italic">
+                  {item.step}
+                </div>
+                <h3 className="font-display text-xl text-navy mt-1">
+                  {item.title}
+                </h3>
+                <p className="text-sm text-navy/50 mt-2 leading-relaxed">
+                  {item.desc}
                 </p>
               </div>
             ))}
@@ -90,17 +144,23 @@ export default function LandingPage({ onStart }: LandingPageProps) {
       </div>
 
       {/* Footer */}
-      <footer className="text-center py-4 space-y-1">
-        <div className="flex justify-center gap-4 text-xs">
-          <a href="/manage" className="text-blue-500 hover:text-blue-700 underline underline-offset-2">
+      <footer className="py-6 px-6 text-center space-y-2 bg-parchment">
+        <div className="flex justify-center gap-6 text-xs">
+          <a
+            href="/manage"
+            className="text-navy/40 hover:text-gold transition-colors tracking-wide uppercase"
+          >
             Manage Questions
           </a>
-          <a href="/demo" className="text-blue-500 hover:text-blue-700 underline underline-offset-2">
+          <a
+            href="/demo"
+            className="text-navy/40 hover:text-gold transition-colors tracking-wide uppercase"
+          >
             View Demo
           </a>
         </div>
-        <p className="text-xs text-slate-400">
-          Young Indians — CII &middot; NMT Vertical Diagnostic Tool
+        <p className="text-[10px] text-navy/25 tracking-widest uppercase">
+          Young Indians &mdash; Confederation of Indian Industry
         </p>
       </footer>
     </div>

@@ -118,7 +118,7 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
 
         {/* Progress Header */}
         <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm text-slate-500">
+          <div className="flex justify-between items-center text-sm text-navy/40">
             <span>
               {state.currentStep === 0
                 ? "Getting Started"
@@ -133,15 +133,15 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
         {state.currentStep === 0 && (
           <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-2xl">Before we begin...</CardTitle>
-              <p className="text-slate-500">
+              <CardTitle className="font-display text-2xl">Before we begin...</CardTitle>
+              <p className="text-navy/40">
                 Tell us which vertical you&apos;re assessing
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Vertical Select */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-navy/70">
                   Vertical <span className="text-red-500">*</span>
                 </label>
                 <Select
@@ -196,9 +196,9 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
 
               {/* Region Select */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-navy/70">
                   Region{" "}
-                  <span className="text-slate-400 font-normal">(optional)</span>
+                  <span className="text-navy/30 font-normal">(optional)</span>
                 </label>
                 <Select
                   value={state.region}
@@ -220,9 +220,9 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
 
               {/* Respondent Name */}
               <div className="space-y-2">
-                <label htmlFor="respondentName" className="text-sm font-medium text-slate-700">
+                <label htmlFor="respondentName" className="text-sm font-medium text-navy/70">
                   Your Name{" "}
-                  <span className="text-slate-400 font-normal">(optional)</span>
+                  <span className="text-navy/30 font-normal">(optional)</span>
                 </label>
                 <input
                   id="respondentName"
@@ -233,12 +233,12 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                     updateField("respondentName", e.target.value)
                   }
                   placeholder="Name of the respondent"
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 rounded-lg border border-navy/10 bg-white text-navy placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
                 />
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <p className="text-sm text-blue-800">
+              <div className="bg-navy/[0.03] rounded-lg p-4 border border-navy/10">
+                <p className="text-sm text-navy/70">
                   <strong>How it works:</strong> You&apos;ll rate 35 statements
                   across 7 dimensions on a scale of 1-5. It takes about 5
                   minutes. Your results are calculated instantly — nothing is
@@ -268,13 +268,13 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
             variant="ghost"
             onClick={handleBack}
             disabled={state.currentStep === 0}
-            className="text-slate-500"
+            className="text-navy/40"
           >
             Back
           </Button>
           <Button
             onClick={handleNext}
-            className="bg-blue-600 hover:bg-blue-700 px-8 h-12 text-base font-medium rounded-xl shadow-md"
+            className="bg-navy hover:bg-navy-light px-8 h-12 text-base font-medium rounded-xl shadow-md"
           >
             {state.currentStep === TOTAL_STEPS - 1
               ? "View Results"
@@ -300,13 +300,13 @@ const DimensionStep = forwardRef<
   }
 >(function DimensionStep({ dimension, answers, onAnswer, error, stepNumber }, ref) {
   const dimensionColors = [
-    "from-blue-500 to-blue-600",
-    "from-indigo-500 to-indigo-600",
-    "from-violet-500 to-violet-600",
-    "from-purple-500 to-purple-600",
-    "from-fuchsia-500 to-fuchsia-600",
-    "from-pink-500 to-pink-600",
-    "from-rose-500 to-rose-600",
+    "from-[#0c1425] to-[#162033]",
+    "from-[#0f1a2e] to-[#1a2744]",
+    "from-[#121d30] to-[#1d2e4a]",
+    "from-[#151f32] to-[#203450]",
+    "from-[#0e1928] to-[#182a42]",
+    "from-[#111c2f] to-[#1c3048]",
+    "from-[#141e31] to-[#1f334e]",
   ];
 
   return (
@@ -320,7 +320,7 @@ const DimensionStep = forwardRef<
         <p className="text-sm font-medium opacity-80">
           Dimension {stepNumber} of 7
         </p>
-        <h2 className="text-2xl font-bold mt-1">{dimension.name}</h2>
+        <h2 className="font-display text-2xl mt-1">{dimension.name}</h2>
         <p className="text-sm opacity-80 mt-2">
           Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree)
         </p>
@@ -341,10 +341,10 @@ const DimensionStep = forwardRef<
           }`}
         >
           <CardContent className="p-5">
-            <p className="text-sm text-slate-500 mb-2">
+            <p className="text-sm text-navy/40 mb-2">
               Statement {index + 1} of 5
             </p>
-            <p className="text-base font-medium text-slate-800 mb-4 leading-relaxed">
+            <p className="text-base font-medium text-navy mb-4 leading-relaxed">
               {question.text}
             </p>
 
@@ -356,8 +356,8 @@ const DimensionStep = forwardRef<
                   onClick={() => onAnswer(question.id, rating.value)}
                   className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all ${
                     answers[question.id] === rating.value
-                      ? "bg-blue-600 text-white shadow-md scale-105"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      ? "bg-navy text-white shadow-md scale-105"
+                      : "bg-navy/5 text-navy/50 hover:bg-navy/10"
                   }`}
                   title={rating.label}
                   aria-label={`Rate statement ${index + 1} as ${rating.value} - ${rating.label}`}
@@ -367,10 +367,10 @@ const DimensionStep = forwardRef<
               ))}
             </div>
             <div className="flex justify-between mt-1.5 px-1">
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[10px] text-navy/30">
                 Strongly Disagree
               </span>
-              <span className="text-[10px] text-slate-400">Strongly Agree</span>
+              <span className="text-[10px] text-navy/30">Strongly Agree</span>
             </div>
           </CardContent>
         </Card>
