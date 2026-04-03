@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LandingPage from "@/components/landing-page";
 import TestFlow from "@/components/test-flow";
 import ResultsDashboard from "@/components/results-dashboard";
@@ -19,6 +19,7 @@ export default function Home() {
     answers: {},
   });
   const [results, setResults] = useState<OverallResult | null>(null);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (view === "test") {
@@ -29,6 +30,24 @@ export default function Home() {
       return () => window.removeEventListener("beforeunload", handler);
     }
   }, [view]);
+
+  // Auto-save results to Supabase
+  const saveResults = useCallback(async (result: OverallResult) => {
+    try {
+      const res = await fetch("/api/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result),
+      });
+      const data = await res.json();
+      if (data.id) {
+        setAssessmentId(data.id);
+        window.history.replaceState(null, "", `/results/${data.id}`);
+      }
+    } catch {
+      // Silent fail — results still show locally
+    }
+  }, []);
 
   const handleStartTest = () => {
     setView("test");
@@ -43,6 +62,7 @@ export default function Home() {
     );
     setResults(result);
     setView("results");
+    saveResults(result);
   };
 
   const handleRetake = () => {
@@ -54,6 +74,8 @@ export default function Home() {
       answers: {},
     });
     setResults(null);
+    setAssessmentId(null);
+    window.history.replaceState(null, "", "/");
     setView("landing");
   };
 
@@ -69,7 +91,11 @@ export default function Home() {
           />
         )}
         {view === "results" && results && (
-          <ResultsDashboard results={results} onRetake={handleRetake} />
+          <ResultsDashboard
+            results={results}
+            onRetake={handleRetake}
+            assessmentId={assessmentId}
+          />
         )}
       </div>
     </main>

@@ -19,6 +19,7 @@ import {
 interface ResultsDashboardProps {
   results: OverallResult;
   onRetake: () => void;
+  assessmentId?: string | null;
 }
 
 const healthColors: Record<HealthStatus, string> = {
@@ -38,6 +39,7 @@ const healthBgColors: Record<HealthStatus, string> = {
 export default function ResultsDashboard({
   results,
   onRetake,
+  assessmentId,
 }: ResultsDashboardProps) {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -611,6 +613,19 @@ export default function ResultsDashboard({
           >
             New Assessment
           </Button>
+          {assessmentId && (
+            <Button
+              onClick={() => {
+                const url = `${window.location.origin}/results/${assessmentId}`;
+                navigator.clipboard.writeText(url).catch(() => {});
+                alert(`Link copied: ${url}`);
+              }}
+              variant="outline"
+              className="h-11 px-6 rounded-lg border-gold/30 text-gold hover:bg-gold/10 text-xs tracking-wider uppercase"
+            >
+              Share Link
+            </Button>
+          )}
         </div>
         <p className="text-center mt-4 text-[10px] text-navy/20 tracking-widest uppercase">
           Young Indians &mdash; Confederation of Indian Industry
