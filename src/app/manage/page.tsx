@@ -27,13 +27,11 @@ export default function ManagePage() {
     const current = selections[key] || [];
 
     if (current.includes(questionId)) {
-      // Deselect — allow going below 5 temporarily for swapping
       setSelections({
         ...selections,
         [key]: current.filter((id) => id !== questionId),
       });
     } else {
-      // Select — max 5
       if (current.length >= 5) return;
       setSelections({
         ...selections,
@@ -44,7 +42,6 @@ export default function ManagePage() {
   };
 
   const handleSave = () => {
-    // Validate: each dimension must have exactly 5
     const valid = allDimensions.every(
       (dim) => (selections[dim.index.toString()] || []).length === 5
     );
@@ -65,37 +62,32 @@ export default function ManagePage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-400">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-parchment">
+        <p className="text-navy/30">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-8 px-4">
+    <div className="min-h-screen py-8 px-4 bg-parchment">
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <a
-              href="/"
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              ← Back to test
+            <a href="/" className="text-xs text-gold-muted hover:text-gold tracking-wider uppercase">
+              &larr; Back to test
             </a>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-2xl text-navy">
             Manage Questions
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-navy/40 mt-1">
             Select exactly 5 questions per dimension for the diagnostic test.
             The full bank has {allDimensions.reduce((s, d) => s + d.questions.length, 0)} questions across 7 dimensions.
             Changes are saved to this browser.
           </p>
         </div>
 
-        {/* Summary bar */}
-        <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+        <div className="flex items-center gap-4 p-3 bg-white rounded-lg border border-navy/5">
           <div className="flex gap-2 flex-wrap flex-1">
             {allDimensions.map((dim) => {
               const count = (selections[dim.index.toString()] || []).length;
@@ -117,17 +109,16 @@ export default function ManagePage() {
           </div>
         </div>
 
-        {/* Dimension sections */}
         {allDimensions.map((dim) => {
           const selected = new Set(selections[dim.index.toString()] || []);
           const count = selected.size;
           const isValid = count === 5;
 
           return (
-            <Card key={dim.index} className="border-0 shadow-md">
+            <Card key={dim.index} className="border border-navy/5 shadow-none bg-white">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">
+                  <CardTitle className="font-display text-base text-navy">
                     {dim.index + 1}. {dim.name}
                   </CardTitle>
                   <Badge
@@ -143,7 +134,7 @@ export default function ManagePage() {
                     {count}/5 selected
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-navy/30">
                   {dim.questions.length} questions available — select exactly 5
                 </p>
               </CardHeader>
@@ -157,17 +148,17 @@ export default function ManagePage() {
                       disabled={!isSelected && count >= 5}
                       className={`w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3 ${
                         isSelected
-                          ? "bg-blue-50 border-blue-200 hover:bg-blue-100"
+                          ? "bg-navy/[0.03] border-navy/15 hover:bg-navy/[0.06]"
                           : count >= 5
-                            ? "bg-slate-50 border-slate-100 opacity-40 cursor-not-allowed"
-                            : "bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                            ? "bg-navy/[0.01] border-navy/5 opacity-40 cursor-not-allowed"
+                            : "bg-white border-navy/10 hover:bg-navy/[0.02] hover:border-navy/15"
                       }`}
                     >
                       <div
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 ${
                           isSelected
-                            ? "bg-blue-600 border-blue-600"
-                            : "border-slate-300"
+                            ? "bg-navy border-navy"
+                            : "border-navy/20"
                         }`}
                       >
                         {isSelected && (
@@ -187,11 +178,11 @@ export default function ManagePage() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <span className="text-sm text-slate-700 leading-relaxed">
+                        <span className="text-sm text-navy/70 leading-relaxed">
                           Q{q.questionNumber}. {q.text}
                         </span>
                         {isSelected && count === 5 && (
-                          <span className="text-[10px] text-blue-400 ml-2">
+                          <span className="text-[10px] text-gold-muted ml-2">
                             (deselect another first to swap)
                           </span>
                         )}
@@ -206,9 +197,8 @@ export default function ManagePage() {
 
         <Separator />
 
-        {/* Action bar */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between items-center sticky bottom-4 bg-white/90 backdrop-blur p-4 rounded-xl shadow-lg border border-slate-200">
-          <div className="text-sm text-slate-500">
+        <div className="flex flex-col sm:flex-row gap-3 justify-between items-center sticky bottom-4 bg-white/90 backdrop-blur p-4 rounded-xl shadow-lg border border-navy/10">
+          <div className="text-sm text-navy/40">
             {allDimensions.every(
               (d) => (selections[d.index.toString()] || []).length === 5
             )
@@ -219,13 +209,13 @@ export default function ManagePage() {
             <Button
               variant="outline"
               onClick={handleReset}
-              className="rounded-xl"
+              className="rounded-lg border-navy/10 text-navy/50"
             >
               Reset to Defaults
             </Button>
             <Button
               onClick={handleSave}
-              className="rounded-xl bg-blue-600 hover:bg-blue-700"
+              className="rounded-lg bg-navy hover:bg-navy-light"
               disabled={
                 !allDimensions.every(
                   (d) =>

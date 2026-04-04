@@ -18,8 +18,11 @@ export async function GET(request: NextRequest) {
     )
     .order("created_at", { ascending: false });
 
+  const maturityLevel = searchParams.get("maturity_level");
+
   if (vertical) query = query.eq("vertical_name", vertical);
   if (region) query = query.eq("region", region);
+  if (maturityLevel) query = query.eq("maturity_level", parseInt(maturityLevel));
 
   const { data, error } = await query;
   if (error) {

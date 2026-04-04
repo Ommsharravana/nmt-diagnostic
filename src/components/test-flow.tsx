@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -24,9 +24,6 @@ interface TestFlowProps {
   onComplete: (state: TestState) => void;
 }
 
-const testDimensions = getTestQuestions();
-const TOTAL_STEPS = testDimensions.length + 1; // info step + 7 dimensions
-
 const ratingLabels = [
   { value: 1, label: "Strongly Disagree", short: "1" },
   { value: 2, label: "Disagree", short: "2" },
@@ -36,6 +33,8 @@ const ratingLabels = [
 ];
 
 export default function TestFlow({ state, setState, onComplete }: TestFlowProps) {
+  const testDimensions = useMemo(() => getTestQuestions(), []);
+  const TOTAL_STEPS = testDimensions.length + 1; // info step + 7 dimensions
   const [errors, setErrors] = useState<Record<string, string>>({});
   const stepHeadingRef = useRef<HTMLDivElement>(null);
 
@@ -241,8 +240,8 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                 <p className="text-sm text-navy/70">
                   <strong>How it works:</strong> You&apos;ll rate 35 statements
                   across 7 dimensions on a scale of 1-5. It takes about 5
-                  minutes. Your results are calculated instantly — nothing is
-                  stored.
+                  minutes. Your results are calculated instantly. A shareable
+                  link is generated so you can return to your results.
                 </p>
               </div>
             </CardContent>

@@ -6,6 +6,35 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // --- Input validation ---
+    const errors: string[] = [];
+
+    if (typeof body.verticalName !== "string" || body.verticalName.trim().length === 0) {
+      errors.push("verticalName must be a non-empty string");
+    } else if (body.verticalName.length > 100) {
+      errors.push("verticalName must be at most 100 characters");
+    }
+
+    if (typeof body.totalScore !== "number" || body.totalScore < 0 || body.totalScore > 175) {
+      errors.push("totalScore must be a number between 0 and 175");
+    }
+
+    if (typeof body.percentage !== "number" || body.percentage < 0 || body.percentage > 100) {
+      errors.push("percentage must be a number between 0 and 100");
+    }
+
+    if (!body.maturity || ![1, 2, 3, 4, 5].includes(body.maturity.level)) {
+      errors.push("maturity.level must be 1, 2, 3, 4, or 5");
+    }
+
+    if (!Array.isArray(body.dimensions)) {
+      errors.push("dimensions must be an array");
+    }
+
+    if (errors.length > 0) {
+      return NextResponse.json({ error: errors.join("; ") }, { status: 422 });
+    }
+
     const row = {
       vertical_name: body.verticalName,
       region: body.region || null,

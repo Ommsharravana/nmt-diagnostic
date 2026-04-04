@@ -59,6 +59,8 @@ export default function AdminPage() {
   const [filterVertical, setFilterVertical] = useState("all");
   const [filterRegion, setFilterRegion] = useState("all");
   const [filterMaturity, setFilterMaturity] = useState("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
 
   // Compare
   const [compareIds, setCompareIds] = useState<Set<string>>(new Set());
@@ -100,6 +102,8 @@ export default function AdminPage() {
     if (filterVertical !== "all") params.set("vertical", filterVertical);
     if (filterRegion !== "all") params.set("region", filterRegion);
     if (filterMaturity !== "all") params.set("maturity_level", filterMaturity);
+    if (filterDateFrom) params.set("date_from", filterDateFrom);
+    if (filterDateTo) params.set("date_to", filterDateTo);
 
     const res = await fetch(`/api/assessments?${params}`, {
       headers: { "x-admin-password": storedPassword },
@@ -109,7 +113,7 @@ export default function AdminPage() {
       setAssessments(data);
     }
     setLoading(false);
-  }, [storedPassword, filterVertical, filterRegion, filterMaturity]);
+  }, [storedPassword, filterVertical, filterRegion, filterMaturity, filterDateFrom, filterDateTo]);
 
   useEffect(() => {
     if (authenticated) fetchAssessments();
@@ -119,6 +123,7 @@ export default function AdminPage() {
     const params = new URLSearchParams();
     if (filterVertical !== "all") params.set("vertical", filterVertical);
     if (filterRegion !== "all") params.set("region", filterRegion);
+    if (filterMaturity !== "all") params.set("maturity_level", filterMaturity);
 
     const res = await fetch(`/api/assessments/export?${params}`, {
       headers: { "x-admin-password": storedPassword },
@@ -342,6 +347,21 @@ export default function AdminPage() {
               ))}
             </SelectContent>
           </Select>
+
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            className="h-9 px-3 rounded-lg border border-navy/10 bg-white text-sm text-navy/70"
+            placeholder="From"
+          />
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            className="h-9 px-3 rounded-lg border border-navy/10 bg-white text-sm text-navy/70"
+            placeholder="To"
+          />
 
           <div className="flex-1" />
 

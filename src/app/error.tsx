@@ -14,18 +14,18 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-parchment">
       <div className="text-center space-y-4 max-w-md">
-        <h2 className="text-2xl font-bold text-slate-900">
+        <h2 className="font-display text-2xl text-navy">
           Something went wrong
         </h2>
-        <p className="text-slate-500">
+        <p className="text-navy/50 text-sm">
           The diagnostic tool encountered an error. Your answers have not been
           lost.
         </p>
         <button
           onClick={reset}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors"
+          className="px-6 py-3 bg-navy text-white rounded-lg font-medium hover:bg-navy-light transition-colors text-sm tracking-wider"
         >
           Try Again
         </button>

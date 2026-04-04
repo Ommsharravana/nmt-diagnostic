@@ -45,6 +45,7 @@ export default function ResultsDashboard({
   const [isExporting, setIsExporting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  const [isLinkCopied, setIsLinkCopied] = useState(false);
 
   const insights = useMemo(() => generateDeepInsights(results), [results]);
 
@@ -615,15 +616,21 @@ export default function ResultsDashboard({
           </Button>
           {assessmentId && (
             <Button
-              onClick={() => {
+              onClick={async () => {
                 const url = `${window.location.origin}/results/${assessmentId}`;
-                navigator.clipboard.writeText(url).catch(() => {});
-                alert(`Link copied: ${url}`);
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setIsLinkCopied(true);
+                  setTimeout(() => setIsLinkCopied(false), 2000);
+                } catch {
+                  // fallback
+                }
               }}
               variant="outline"
               className="h-11 px-6 rounded-lg border-gold/30 text-gold hover:bg-gold/10 text-xs tracking-wider uppercase"
+              disabled={isLinkCopied}
             >
-              Share Link
+              {isLinkCopied ? "Link Copied!" : "Share Link"}
             </Button>
           )}
         </div>
