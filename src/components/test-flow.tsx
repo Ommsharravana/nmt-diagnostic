@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -17,6 +17,28 @@ import {
 import { getTestQuestions } from "@/lib/questions";
 import { verticals, regions } from "@/lib/yi-data";
 import type { TestState } from "@/lib/types";
+import PriorCommitmentsCheck from "@/components/prior-commitments-check";
+
+// Module-scoped helper: does this vertical have pending commitments?
+// Returns false (don't block) on any error — the retake flow should never
+// fail-closed when the commitments API is unreachable.
+async function hasPendingCommitments(verticalName: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(
+      `/api/commitments/pending?vertical=${encodeURIComponent(verticalName)}`,
+      { signal: controller.signal },
+    );
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 interface TestFlowProps {
   state: TestState;
@@ -37,6 +59,12 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
   const TOTAL_STEPS = testDimensions.length + 1; // info step + 7 dimensions
   const [errors, setErrors] = useState<Record<string, string>>({});
   const stepHeadingRef = useRef<HTMLDivElement>(null);
+
+  // Prior-commitments review is a virtual screen that sits between the info
+  // step (0) and the first dimension step (1). It only renders when the
+  // vertical has open commitments from a previous assessment.
+  const [showingPriorReview, setShowingPriorReview] = useState(false);
+  const [checkingPriorCommitments, setCheckingPriorCommitments] = useState(false);
 
   // Progress: 0% at step 0, 100% at last step
   const progress = (state.currentStep / (TOTAL_STEPS - 1)) * 100;
@@ -82,20 +110,45 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
     return true;
   };
 
-  const handleNext = () => {
-    if (state.currentStep === 0) {
-      if (!validateInfoStep()) return;
-    } else {
-      if (!validateDimensionStep()) return;
-    }
-
+  const advanceStep = useCallback(() => {
     if (state.currentStep === TOTAL_STEPS - 1) {
       onComplete(state);
     } else {
       setState({ ...state, currentStep: state.currentStep + 1 });
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  }, [state, setState, onComplete, TOTAL_STEPS]);
+
+  const handleNext = async () => {
+    if (state.currentStep === 0) {
+      if (!validateInfoStep()) return;
+      // Check for prior pending commitments BEFORE moving to dimension 1.
+      // If any exist, intercept the flow and show the review screen.
+      setCheckingPriorCommitments(true);
+      const hasPending = await hasPendingCommitments(state.verticalName);
+      setCheckingPriorCommitments(false);
+      if (hasPending) {
+        setShowingPriorReview(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      advanceStep();
+      return;
+    }
+
+    if (!validateDimensionStep()) return;
+    advanceStep();
   };
+
+  const handlePriorReviewDone = useCallback(() => {
+    setShowingPriorReview(false);
+    advanceStep();
+  }, [advanceStep]);
+
+  const handlePriorReviewSkip = useCallback(() => {
+    setShowingPriorReview(false);
+    advanceStep();
+  }, [advanceStep]);
 
   const handleBack = () => {
     if (state.currentStep > 0) {
@@ -110,26 +163,39 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Screen reader announcement for step changes */}
         <div aria-live="polite" className="sr-only">
-          {state.currentStep === 0
-            ? "Getting started — enter your vertical information"
-            : `Dimension ${state.currentStep} of ${testDimensions.length}: ${testDimensions[state.currentStep - 1]?.name}`}
+          {showingPriorReview
+            ? "Reviewing prior commitments before the assessment"
+            : state.currentStep === 0
+              ? "Getting started — enter your vertical information"
+              : `Dimension ${state.currentStep} of ${testDimensions.length}: ${testDimensions[state.currentStep - 1]?.name}`}
         </div>
 
         {/* Progress Header */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm text-navy/40">
             <span>
-              {state.currentStep === 0
-                ? "Getting Started"
-                : `Dimension ${state.currentStep} of ${testDimensions.length}`}
+              {showingPriorReview
+                ? "Closing the loop"
+                : state.currentStep === 0
+                  ? "Getting Started"
+                  : `Dimension ${state.currentStep} of ${testDimensions.length}`}
             </span>
             <span>{Math.round(progress)}%</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
+        {/* Prior Commitments Review (virtual step between 0 and 1) */}
+        {showingPriorReview && (
+          <PriorCommitmentsCheck
+            verticalName={state.verticalName}
+            onAllReviewed={handlePriorReviewDone}
+            onSkip={handlePriorReviewSkip}
+          />
+        )}
+
         {/* Info Step */}
-        {state.currentStep === 0 && (
+        {!showingPriorReview && state.currentStep === 0 && (
           <Card className="border-0 shadow-lg">
             <CardHeader>
               <CardTitle className="font-display text-2xl">Before we begin...</CardTitle>
@@ -249,7 +315,8 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
         )}
 
         {/* Dimension Steps */}
-        {state.currentStep > 0 &&
+        {!showingPriorReview &&
+          state.currentStep > 0 &&
           state.currentStep <= testDimensions.length && (
             <DimensionStep
               ref={stepHeadingRef}
@@ -261,25 +328,30 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
             />
           )}
 
-        {/* Navigation */}
-        <div className="flex justify-between items-center pt-2">
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            disabled={state.currentStep === 0}
-            className="text-navy/40"
-          >
-            Back
-          </Button>
-          <Button
-            onClick={handleNext}
-            className="bg-navy hover:bg-navy-light px-8 h-12 text-base font-medium rounded-xl shadow-md"
-          >
-            {state.currentStep === TOTAL_STEPS - 1
-              ? "View Results"
-              : "Continue"}
-          </Button>
-        </div>
+        {/* Navigation — hidden during prior-commitments review (it has its own buttons) */}
+        {!showingPriorReview && (
+          <div className="flex justify-between items-center pt-2">
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              disabled={state.currentStep === 0 || checkingPriorCommitments}
+              className="text-navy/40"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={handleNext}
+              disabled={checkingPriorCommitments}
+              className="bg-navy hover:bg-navy-light px-8 h-12 text-base font-medium rounded-xl shadow-md"
+            >
+              {checkingPriorCommitments
+                ? "Checking…"
+                : state.currentStep === TOTAL_STEPS - 1
+                  ? "View Results"
+                  : "Continue"}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

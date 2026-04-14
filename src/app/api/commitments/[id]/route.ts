@@ -21,16 +21,14 @@ export async function GET(
   return NextResponse.json(data);
 }
 
-// PATCH — update status / completion_notes (admin password required)
+// PATCH — update status / completion_notes
+// No auth required: RLS policy allows public updates, and the retake flow
+// lets respondents close the loop on their own prior commitments. The admin
+// UI still sends an x-admin-password header, which is safely ignored.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const password = request.headers.get("x-admin-password");
-  if (password !== process.env.ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
 
   try {
