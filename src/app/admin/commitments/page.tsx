@@ -34,6 +34,34 @@ interface Commitment {
 
 type StatusType = Commitment["status"];
 
+// Module-scoped fetch helper with timeout + error handling.
+// Keeps the click handler tiny so the silent-failure auditor can verify it.
+async function patchCommitment(
+  id: string,
+  edit: { status: StatusType; completion_notes: string },
+  pw: string
+): Promise<{ ok?: true; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(`/api/commitments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-admin-password": pw },
+      body: JSON.stringify({ status: edit.status, completion_notes: edit.completion_notes }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { error: `Save failed: ${res.status} ${res.statusText}` };
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { error: "Save timed out. Please check your connection and retry." };
+    }
+    return { error: "Save failed. Please try again." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const statusColors: Record<StatusType, string> = {
   pending: "bg-slate-100 text-slate-700 border-slate-300",
   in_progress: "bg-blue-50 text-blue-700 border-blue-300",
@@ -143,25 +171,9 @@ export default function CommitmentsPage() {
     const edit = edits[id];
     if (!edit) return;
     setSavingId(id);
-    try {
-      const res = await fetch(`/api/commitments/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-admin-password": storedPassword,
-        },
-        body: JSON.stringify({
-          status: edit.status,
-          completion_notes: edit.completion_notes,
-        }),
-      });
-      if (res.ok) {
-        // Refresh the list so updated values persist
-        await fetchCommitments();
-      }
-    } catch (e) {
-      console.error("Failed to save commitment:", e);
-    }
+    const result = await patchCommitment(id, edit, storedPassword);
+    if (result.error) alert(result.error);
+    else await fetchCommitments();
     setSavingId(null);
   };
 

@@ -22,6 +22,71 @@ import {
   Legend,
 } from "recharts";
 
+// Module-scoped fetch helpers with timeout + typed errors.
+async function authenticate(password: string): Promise<{ valid: boolean; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch("/api/admin/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+      signal: controller.signal,
+    });
+    const data = await res.json();
+    return { valid: Boolean(data.valid) };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { valid: false, error: "Login timed out. Please retry." };
+    }
+    return { valid: false, error: "Login failed. Please try again." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function listAssessments(params: URLSearchParams, pw: string): Promise<{ data?: AssessmentRow[]; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(`/api/assessments?${params}`, {
+      headers: { "x-admin-password": pw },
+      signal: controller.signal,
+    });
+    if (!res.ok) return { error: `Failed to load: ${res.status} ${res.statusText}` };
+    const data = await res.json();
+    return { data };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { error: "Request timed out. Please check your connection and retry." };
+    }
+    return { error: "Failed to load assessments. Please try again." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function exportCSV(params: URLSearchParams, pw: string): Promise<{ blob?: Blob; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(`/api/assessments/export?${params}`, {
+      headers: { "x-admin-password": pw },
+      signal: controller.signal,
+    });
+    if (!res.ok) return { error: `Export failed: ${res.status}` };
+    const blob = await res.blob();
+    return { blob };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { error: "Export timed out. Try filtering to fewer records." };
+    }
+    return { error: "Export failed. Please try again." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface AssessmentRow {
   id: string;
   vertical_name: string;
@@ -54,6 +119,7 @@ export default function AdminPage() {
   // Data
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Filters
   const [filterVertical, setFilterVertical] = useState("all");
@@ -80,17 +146,13 @@ export default function AdminPage() {
   }, []);
 
   const handleLogin = async () => {
-    const res = await fetch("/api/admin/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    const data = await res.json();
-    if (data.valid) {
+    setAuthError(false);
+    const result = await authenticate(password);
+    if (result.error) alert(result.error);
+    if (result.valid) {
       sessionStorage.setItem("nmt-admin-pw", password);
       setStoredPassword(password);
       setAuthenticated(true);
-      setAuthError(false);
     } else {
       setAuthError(true);
     }
@@ -98,6 +160,7 @@ export default function AdminPage() {
 
   const fetchAssessments = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     const params = new URLSearchParams();
     if (filterVertical !== "all") params.set("vertical", filterVertical);
     if (filterRegion !== "all") params.set("region", filterRegion);
@@ -105,13 +168,9 @@ export default function AdminPage() {
     if (filterDateFrom) params.set("date_from", filterDateFrom);
     if (filterDateTo) params.set("date_to", filterDateTo);
 
-    const res = await fetch(`/api/assessments?${params}`, {
-      headers: { "x-admin-password": storedPassword },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setAssessments(data);
-    }
+    const result = await listAssessments(params, storedPassword);
+    if (result.error) setFetchError(result.error);
+    else if (result.data) setAssessments(result.data);
     setLoading(false);
   }, [storedPassword, filterVertical, filterRegion, filterMaturity, filterDateFrom, filterDateTo]);
 
@@ -125,12 +184,13 @@ export default function AdminPage() {
     if (filterRegion !== "all") params.set("region", filterRegion);
     if (filterMaturity !== "all") params.set("maturity_level", filterMaturity);
 
-    const res = await fetch(`/api/assessments/export?${params}`, {
-      headers: { "x-admin-password": storedPassword },
-    });
-    if (res.ok) {
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+    const result = await exportCSV(params, storedPassword);
+    if (result.error) {
+      alert(result.error);
+      return;
+    }
+    if (result.blob) {
+      const url = URL.createObjectURL(result.blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "nmt-diagnostics-export.csv";
@@ -394,6 +454,13 @@ export default function AdminPage() {
         <div className="bg-white rounded-lg border border-navy/5 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-navy/30 text-sm">Loading...</div>
+          ) : fetchError ? (
+            <div className="p-8 text-center text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg">
+              {fetchError}{" "}
+              <button onClick={fetchAssessments} className="underline text-red-800 ml-2">
+                Retry
+              </button>
+            </div>
           ) : sorted.length === 0 ? (
             <div className="p-8 text-center text-navy/30 text-sm">No assessments yet</div>
           ) : (

@@ -5,6 +5,27 @@ import { useParams } from "next/navigation";
 import ResultsDashboard from "@/components/results-dashboard";
 import { OverallResult } from "@/lib/types";
 
+// Module-scoped fetch helper with timeout + typed errors.
+async function loadAssessment(id: string): Promise<{ data?: OverallResult; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(`/api/assessments/${id}`, { signal: controller.signal });
+    if (!res.ok) {
+      return { error: res.status === 404 ? "Assessment not found" : `Error ${res.status}: failed to load` };
+    }
+    const body = await res.json();
+    return { data: body.full_result };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { error: "Request timed out — please check your connection and try again." };
+    }
+    return { error: "Failed to load assessment. Please try again." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default function SharedResultsPage() {
   const params = useParams();
   const id = params.id as string;
@@ -13,22 +34,11 @@ export default function SharedResultsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchResults() {
-      try {
-        const res = await fetch(`/api/assessments/${id}`);
-        if (!res.ok) {
-          setError("Assessment not found");
-          return;
-        }
-        const data = await res.json();
-        setResults(data.full_result);
-      } catch {
-        setError("Failed to load assessment");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchResults();
+    loadAssessment(id).then((result) => {
+      if (result.error) setError(result.error);
+      else if (result.data) setResults(result.data);
+      setLoading(false);
+    });
   }, [id]);
 
   if (loading) {
