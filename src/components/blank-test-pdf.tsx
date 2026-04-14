@@ -612,11 +612,16 @@ async function renderPageToPdf(
 }
 
 /* ===== Main exported function ===== */
-export async function downloadBlankTestPDF(): Promise<void> {
+export async function downloadBlankTestPDF(
+  onProgress?: (msg: string) => void,
+): Promise<void> {
   if (typeof window === "undefined") {
     throw new Error("downloadBlankTestPDF must run in the browser");
   }
 
+  const progress = (msg: string) => { if (onProgress) onProgress(msg); };
+
+  progress("Loading PDF libraries…");
   const html2canvas = (await import("html2canvas")).default;
   const jsPDFCtor = (await import("jspdf")).default;
 
@@ -629,6 +634,7 @@ export async function downloadBlankTestPDF(): Promise<void> {
 
   const dimensions = getTestQuestions();
 
+  progress("Rendering page 1 of 4…");
   // Page 1: header + info block + first two dimensions (keeps page density reasonable)
   const firstPageDimensions = dimensions.slice(0, 2);
   const firstPageHtml =
@@ -640,6 +646,7 @@ export async function downloadBlankTestPDF(): Promise<void> {
 
   await renderPageToPdf(pdf, firstPageHtml, html2canvas, true);
 
+  progress("Rendering page 2 of 4…");
   // Page 2: dimensions 3 + 4
   const page2Dimensions = dimensions.slice(2, 4);
   const page2Html =
@@ -651,6 +658,7 @@ export async function downloadBlankTestPDF(): Promise<void> {
 
   await renderPageToPdf(pdf, page2Html, html2canvas, false);
 
+  progress("Rendering page 3 of 4…");
   // Page 3: dimensions 5 + 6 + 7
   const page3Dimensions = dimensions.slice(4);
   const page3Html =
@@ -662,12 +670,15 @@ export async function downloadBlankTestPDF(): Promise<void> {
 
   await renderPageToPdf(pdf, page3Html, html2canvas, false);
 
+  progress("Rendering page 4 of 4…");
   // Page 4: scoring guide
   const guideHtml = buildScoringGuide() + `<div class="page-tag">Page 4 of 4</div>`;
   await renderPageToPdf(pdf, guideHtml, html2canvas, false);
 
+  progress("Saving PDF…");
   const filename = `NMT-Paper-Assessment-${todayYmd()}.pdf`;
   pdf.save(filename);
+  progress("Downloaded");
 }
 
 /* ===== Default export for convenience ===== */

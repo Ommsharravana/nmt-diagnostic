@@ -81,6 +81,7 @@ export default function AdminLivePage() {
   const [assessmentUrl, setAssessmentUrl] = useState<string>("");
   const [showQrModal, setShowQrModal] = useState(false);
   const [isDownloadingPaper, setIsDownloadingPaper] = useState(false);
+  const [paperProgress, setPaperProgress] = useState<string>("");
 
   // Auth check on mount
   useEffect(() => {
@@ -120,13 +121,15 @@ export default function AdminLivePage() {
   const handleDownloadPaperTest = async () => {
     if (isDownloadingPaper) return;
     setIsDownloadingPaper(true);
+    setPaperProgress("Starting…");
     try {
-      await downloadBlankTestPDF();
+      await downloadBlankTestPDF((msg) => setPaperProgress(msg));
     } catch (err) {
       console.error("PDF download failed", err);
       alert("Could not generate the paper test PDF. Please try again.");
     } finally {
       setIsDownloadingPaper(false);
+      setPaperProgress("");
     }
   };
 
@@ -759,7 +762,7 @@ export default function AdminLivePage() {
                 disabled={isDownloadingPaper}
                 className="w-full h-10 bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 hover:border-gold/50 text-[9px] tracking-[0.35em] uppercase font-body disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
-                {isDownloadingPaper ? "Preparing PDF…" : "Download blank test PDF"}
+                {isDownloadingPaper ? (paperProgress || "Preparing PDF…") : "Download blank test PDF"}
               </button>
             </div>
           </div>
