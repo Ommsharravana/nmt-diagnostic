@@ -14,6 +14,8 @@ export default function Home() {
   const [testState, setTestState] = useState<TestState>({
     verticalName: "",
     respondentName: "",
+    chairName: "",
+    coChairName: "",
     region: "",
     currentStep: 0,
     answers: {},
@@ -60,6 +62,8 @@ export default function Home() {
       state.respondentName,
       state.region
     );
+    result.chairName = state.chairName;
+    result.coChairName = state.coChairName;
     setResults(result);
     setView("results");
     saveResults(result);
@@ -69,6 +73,8 @@ export default function Home() {
     setTestState({
       verticalName: "",
       respondentName: "",
+      chairName: "",
+      coChairName: "",
       region: "",
       currentStep: 0,
       answers: {},

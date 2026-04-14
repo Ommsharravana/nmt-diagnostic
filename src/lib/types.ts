@@ -52,11 +52,15 @@ export interface OverallResult {
   respondentName: string;
   region: string;
   date: string;
+  chairName?: string;
+  coChairName?: string;
 }
 
 export interface TestState {
   verticalName: string;
   respondentName: string;
+  chairName: string;
+  coChairName: string;
   region: string;
   currentStep: number; // 0 = info, 1-7 = dimensions, 8 = review
   answers: Record<string, number>;

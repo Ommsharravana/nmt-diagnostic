@@ -9,6 +9,52 @@ import { getRecommendations } from "@/lib/recommendations";
 import { generateDeepInsights } from "@/lib/insights";
 import CommitmentCapture from "@/components/commitment-capture";
 import {
+  downloadActionCommitmentSheet,
+  type CommitmentData,
+} from "@/components/action-commitment-sheet-pdf";
+
+// Module-scoped helper with timeout + error swallow (blank PDF is acceptable fallback).
+async function fetchCommitmentForAssessment(
+  verticalName: string,
+  assessmentId: string,
+): Promise<CommitmentData | undefined> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(
+      `/api/commitments/pending?vertical=${encodeURIComponent(verticalName)}`,
+      { cache: "no-store", signal: controller.signal },
+    );
+    if (!res.ok) {
+      console.warn("commitments/pending non-ok:", res.status);
+      return undefined;
+    }
+    const rows: Array<Record<string, unknown>> = await res.json();
+    const match = Array.isArray(rows)
+      ? rows.find((r) => r.assessment_id === assessmentId)
+      : undefined;
+    if (!match) return undefined;
+    return {
+      focus_dimension: (match.focus_dimension as string) ?? undefined,
+      focus_reason: (match.focus_reason as string) ?? undefined,
+      action_items_detailed: Array.isArray(match.action_items_detailed)
+        ? (match.action_items_detailed as CommitmentData["action_items_detailed"])
+        : undefined,
+      dimension_observations:
+        match.dimension_observations &&
+        typeof match.dimension_observations === "object"
+          ? (match.dimension_observations as Record<string, string>)
+          : undefined,
+      target_meeting: (match.target_meeting as string) ?? undefined,
+    };
+  } catch (err) {
+    console.warn("Could not fetch commitment for PDF — falling back to blank:", err);
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+import {
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
@@ -47,6 +93,7 @@ export default function ResultsDashboard({
   const [isCopied, setIsCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const [isLinkCopied, setIsLinkCopied] = useState(false);
+  const [isExportingSheet, setIsExportingSheet] = useState(false);
 
   const insights = useMemo(() => generateDeepInsights(results), [results]);
 
@@ -122,6 +169,24 @@ export default function ResultsDashboard({
     } catch {
       setCopyFailed(true);
       setTimeout(() => setCopyFailed(false), 2000);
+    }
+  };
+
+  const handleDownloadCommitmentSheet = async () => {
+    if (isExportingSheet) return;
+    setIsExportingSheet(true);
+    try {
+      const commitment = assessmentId
+        ? await fetchCommitmentForAssessment(results.verticalName, assessmentId)
+        : undefined;
+      await downloadActionCommitmentSheet(results, commitment);
+    } catch (err) {
+      console.error("Action Commitment Sheet export failed:", err);
+      alert(
+        "Could not generate the Action Commitment Sheet. Please try again.",
+      );
+    } finally {
+      setIsExportingSheet(false);
     }
   };
 
@@ -502,6 +567,10 @@ export default function ResultsDashboard({
                 verticalName={results.verticalName}
                 region={results.region}
                 respondentName={results.respondentName}
+                chairName={results.chairName}
+                coChairName={results.coChairName}
+                totalScore={results.totalScore}
+                maturityState={results.maturity.state}
                 dimensions={results.dimensions}
                 currentLevel={results.maturity.level}
                 weakestDimensionName={results.weakest[0]?.dimension.name || ""}
@@ -623,6 +692,14 @@ export default function ResultsDashboard({
             disabled={isCopied}
           >
             {isCopied ? "Copied!" : copyFailed ? "Failed" : "Copy Results"}
+          </Button>
+          <Button
+            onClick={handleDownloadCommitmentSheet}
+            variant="outline"
+            className="h-11 px-6 rounded-lg border-gold/40 text-gold hover:bg-gold/10 text-xs tracking-wider uppercase"
+            disabled={isExportingSheet}
+          >
+            {isExportingSheet ? "Generating..." : "Action Commitment Sheet"}
           </Button>
           <Button
             onClick={onRetake}

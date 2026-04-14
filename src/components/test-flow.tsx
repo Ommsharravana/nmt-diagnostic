@@ -95,6 +95,12 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
     if (!state.verticalName.trim()) {
       newErrors.verticalName = "Please enter the vertical name";
     }
+    if (!state.chairName.trim()) {
+      newErrors.chairName = "Please enter the Chair's name";
+    }
+    if (!state.coChairName.trim()) {
+      newErrors.coChairName = "Please enter the Co-Chair's name";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -112,7 +118,12 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
 
   const advanceStep = useCallback(() => {
     if (state.currentStep === TOTAL_STEPS - 1) {
-      onComplete(state);
+      // Backward-compat: default respondentName to chairName if empty
+      const finalState: TestState = {
+        ...state,
+        respondentName: state.respondentName.trim() || state.chairName.trim(),
+      };
+      onComplete(finalState);
     } else {
       setState({ ...state, currentStep: state.currentStep + 1 });
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -283,23 +294,49 @@ export default function TestFlow({ state, setState, onComplete }: TestFlowProps)
                 </Select>
               </div>
 
-              {/* Respondent Name */}
+              {/* Chair & Co-Chair */}
               <div className="space-y-2">
-                <label htmlFor="respondentName" className="text-sm font-medium text-navy/70">
-                  Your Name{" "}
-                  <span className="text-navy/30 font-normal">(optional)</span>
-                </label>
-                <input
-                  id="respondentName"
-                  type="text"
-                  maxLength={60}
-                  value={state.respondentName}
-                  onChange={(e) =>
-                    updateField("respondentName", e.target.value)
-                  }
-                  placeholder="Name of the respondent"
-                  className="w-full px-4 py-3 rounded-lg border border-navy/10 bg-white text-navy placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="chairName" className="text-sm font-medium text-navy/70">
+                      Chair <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="chairName"
+                      type="text"
+                      maxLength={100}
+                      value={state.chairName}
+                      onChange={(e) => updateField("chairName", e.target.value)}
+                      placeholder="Chair's name"
+                      aria-describedby={errors.chairName ? "chairName-error" : undefined}
+                      className="w-full px-4 py-3 rounded-lg border border-navy/10 bg-white text-navy placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
+                    />
+                    {errors.chairName && (
+                      <p id="chairName-error" className="text-sm text-red-500">{errors.chairName}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="coChairName" className="text-sm font-medium text-navy/70">
+                      Co-Chair <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="coChairName"
+                      type="text"
+                      maxLength={100}
+                      value={state.coChairName}
+                      onChange={(e) => updateField("coChairName", e.target.value)}
+                      placeholder="Co-Chair's name"
+                      aria-describedby={errors.coChairName ? "coChairName-error" : undefined}
+                      className="w-full px-4 py-3 rounded-lg border border-navy/10 bg-white text-navy placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all"
+                    />
+                    {errors.coChairName && (
+                      <p id="coChairName-error" className="text-sm text-red-500">{errors.coChairName}</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-navy/50">
+                  Per the Yi playbook, Chair and Co-Chair take the assessment jointly.
+                </p>
               </div>
 
               <div className="bg-navy/[0.03] rounded-lg p-4 border border-navy/10">
