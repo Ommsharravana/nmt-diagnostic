@@ -1,17 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { verticals } from "@/lib/yi-data";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type StatusType = "pending" | "in_progress" | "done" | "missed" | "partial";
 
@@ -40,7 +32,6 @@ interface Commitment {
   completion_notes: string | null;
   created_at: string;
   updated_at: string;
-  // Extended fields (Rohan's Action Commitment Sheet)
   chair_name: string | null;
   co_chair_name: string | null;
   focus_reason: string | null;
@@ -48,12 +39,12 @@ interface Commitment {
   dimension_observations: Record<string, string> | null;
 }
 
-// Module-scoped fetch helper with timeout + error handling.
-// Keeps the click handler tiny so the silent-failure auditor can verify it.
+// ─── Fetch helpers ────────────────────────────────────────────────────────────
+
 async function patchCommitment(
   id: string,
   edit: { status: StatusType; completion_notes: string },
-  pw: string
+  pw: string,
 ): Promise<{ ok?: true; error?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
@@ -76,13 +67,12 @@ async function patchCommitment(
   }
 }
 
-// Module-scoped fetch helper for updating a single action item (index 0..2).
 async function updateActionItem(
   id: string,
   index: number,
   status: StatusType,
   notes: string,
-  pw: string
+  pw: string,
 ): Promise<{ ok?: true; error?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
@@ -90,9 +80,7 @@ async function updateActionItem(
     const res = await fetch(`/api/commitments/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "x-admin-password": pw },
-      body: JSON.stringify({
-        updateActionItem: { index, status, notes },
-      }),
+      body: JSON.stringify({ updateActionItem: { index, status, notes } }),
       signal: controller.signal,
     });
     if (!res.ok) {
@@ -100,9 +88,7 @@ async function updateActionItem(
       try {
         const j = await res.json();
         if (j?.error) msg = j.error;
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
       return { error: msg };
     }
     return { ok: true };
@@ -116,13 +102,9 @@ async function updateActionItem(
   }
 }
 
-const statusColors: Record<StatusType, string> = {
-  pending: "bg-slate-100 text-slate-700 border-slate-300",
-  in_progress: "bg-blue-50 text-blue-700 border-blue-300",
-  done: "bg-emerald-50 text-emerald-700 border-emerald-300",
-  partial: "bg-amber-50 text-amber-700 border-amber-300",
-  missed: "bg-red-50 text-red-700 border-red-300",
-};
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ALL_STATUSES: StatusType[] = ["pending", "in_progress", "done", "partial", "missed"];
 
 const statusLabels: Record<StatusType, string> = {
   pending: "Pending",
@@ -132,67 +114,45 @@ const statusLabels: Record<StatusType, string> = {
   missed: "Missed",
 };
 
-const ALL_STATUSES: StatusType[] = [
-  "pending",
-  "in_progress",
-  "done",
-  "partial",
-  "missed",
-];
+/** Editorial text + left-border treatment — no background chips */
+const statusStyle: Record<StatusType, { text: string; bar: string }> = {
+  pending:     { text: "text-slate-500",   bar: "bg-slate-300" },
+  in_progress: { text: "text-blue-600",    bar: "bg-blue-500" },
+  done:        { text: "text-emerald-700", bar: "bg-emerald-500" },
+  partial:     { text: "text-amber-700",   bar: "bg-amber-500" },
+  missed:      { text: "text-red-700",     bar: "bg-red-500" },
+};
+
+// ─── Utility ─────────────────────────────────────────────────────────────────
 
 function formatDeadline(value: string | null | undefined): string {
   if (!value) return "—";
-  // Try YYYY-MM-DD fast-path
   const d = new Date(`${value}T00:00:00`);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
-/**
- * Build a mailto: link for sharing a vertical scorecard with its Chair and
- * Co-Chair. We don't have SMTP — this just opens the admin's default mail
- * client with a prefilled subject and body so they can review and send.
- */
 function buildChairMailto(c: Commitment): string {
   const subject = `Your NMT Diagnostic Scorecard — ${c.vertical_name}`;
-
   const greetingNames = [c.chair_name, c.co_chair_name]
     .map((n) => (n ? n.trim() : ""))
     .filter((n) => n.length > 0);
-  const greeting =
-    greetingNames.length > 0 ? `Hi ${greetingNames.join(" and ")},` : "Hi,";
-
+  const greeting = greetingNames.length > 0 ? `Hi ${greetingNames.join(" and ")},` : "Hi,";
   const lines: string[] = [];
 
-  // If we don't know recipients, put a prompt at the top so the admin can
-  // paste them into the To: field before sending.
   if (greetingNames.length === 0) {
-    lines.push(
-      "Send to: (add Chair & Co-Chair email addresses in the To: field)",
-    );
+    lines.push("Send to: (add Chair & Co-Chair email addresses in the To: field)");
     lines.push("");
   } else if (!c.chair_name || !c.co_chair_name) {
-    lines.push(
-      `Send to: ${greetingNames.join(" and ")} (add missing addresses as needed)`,
-    );
+    lines.push(`Send to: ${greetingNames.join(" and ")} (add missing addresses as needed)`);
     lines.push("");
   }
 
   lines.push(greeting);
   lines.push("");
-  lines.push(
-    `Here is the scorecard for ${c.vertical_name} from the recent NMT diagnostic.`,
-  );
+  lines.push(`Here is the scorecard for ${c.vertical_name} from the recent NMT diagnostic.`);
   lines.push("");
-
-  // Focus dimension + level ladder
-  lines.push(
-    `Focus dimension: ${c.focus_dimension} (${c.focus_dimension_score}/25)`,
-  );
+  lines.push(`Focus dimension: ${c.focus_dimension} (${c.focus_dimension_score}/25)`);
   lines.push(`Maturity movement: L${c.current_level} → L${c.target_level}`);
 
   if (c.focus_reason && c.focus_reason.trim().length > 0) {
@@ -200,19 +160,14 @@ function buildChairMailto(c: Commitment): string {
     lines.push(`Why this dimension: ${c.focus_reason.trim()}`);
   }
 
-  // Prefer detailed action items; fall back to legacy strings.
-  const detailed = Array.isArray(c.action_items_detailed)
-    ? c.action_items_detailed
-    : null;
-
+  const detailed = Array.isArray(c.action_items_detailed) ? c.action_items_detailed : null;
   if (detailed && detailed.length > 0) {
     lines.push("");
     lines.push("Action commitments:");
     detailed.forEach((item, i) => {
       const parts: string[] = [`${i + 1}. ${item.text}`];
       if (item.owner) parts.push(`Owner: ${item.owner}`);
-      if (item.deadline)
-        parts.push(`Deadline: ${formatDeadline(item.deadline)}`);
+      if (item.deadline) parts.push(`Deadline: ${formatDeadline(item.deadline)}`);
       lines.push(parts.join(" — "));
     });
   } else if (Array.isArray(c.action_items) && c.action_items.length > 0) {
@@ -223,17 +178,410 @@ function buildChairMailto(c: Commitment): string {
 
   if (c.target_meeting) {
     lines.push("");
-    lines.push(
-      `Follow-up review at: ${c.target_meeting}${c.target_date ? ` (${formatDeadline(c.target_date)})` : ""}`,
-    );
+    lines.push(`Follow-up review at: ${c.target_meeting}${c.target_date ? ` (${formatDeadline(c.target_date)})` : ""}`);
   }
-
   lines.push("");
   lines.push("— Sent from the NMT diagnostic tracker");
 
-  const body = lines.join("\n");
-  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
 }
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+/** Inline status pill — text-only, editorial */
+function StatusPill({ status }: { status: StatusType }) {
+  const { text, bar } = statusStyle[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase font-bold ${text}`}>
+      <span className={`inline-block w-1.5 h-1.5 rounded-full ${bar}`} />
+      {statusLabels[status]}
+    </span>
+  );
+}
+
+/** Summary stat — editorial serif number */
+function StatCell({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="py-5 px-6 border-r border-[#0c1425]/8 last:border-r-0 flex flex-col gap-1">
+      <span className={`font-display text-[2.6rem] leading-none tabular-nums ${accent ? "text-[#c4a35a]" : "text-[#0c1425]"}`}>
+        {value}
+      </span>
+      <span className="text-[10px] tracking-[0.22em] uppercase font-semibold text-[#0c1425]/35">{label}</span>
+    </div>
+  );
+}
+
+/** Nav link pill */
+function NavLink({ href, label, active = false }: { href: string; label: string; active?: boolean }) {
+  return (
+    <a
+      href={href}
+      className={`inline-flex items-center h-8 px-3.5 text-[10px] tracking-[0.18em] uppercase font-semibold transition-colors rounded-sm ${
+        active
+          ? "text-[#c4a35a] border border-[#c4a35a]/40 bg-[#c4a35a]/[0.06]"
+          : "text-white/50 border border-white/[0.08] hover:text-[#c4a35a] hover:border-[#c4a35a]/25"
+      }`}
+    >
+      {label}
+    </a>
+  );
+}
+
+// ─── Action Item Card ─────────────────────────────────────────────────────────
+
+function ActionItemCard({
+  commitmentId,
+  index,
+  item,
+  itemEdits,
+  savingItemKey,
+  onUpdateEdit,
+  onSaveItem,
+}: {
+  commitmentId: string;
+  index: number;
+  item: ActionItemDetail;
+  itemEdits: Record<string, { status: StatusType; notes: string }>;
+  savingItemKey: string | null;
+  onUpdateEdit: (cid: string, idx: number, patch: Partial<{ status: StatusType; notes: string }>) => void;
+  onSaveItem: (cid: string, idx: number) => void;
+}) {
+  const key = `${commitmentId}:${index}`;
+  const edit = itemEdits[key] ?? { status: (item.status ?? "pending") as StatusType, notes: item.notes ?? "" };
+  const isDirty =
+    edit.status !== (item.status ?? "pending") || (edit.notes ?? "") !== (item.notes ?? "");
+  const isSaving = savingItemKey === key;
+  const { text: statusText, bar: statusBar } = statusStyle[edit.status];
+
+  return (
+    <div className="border border-[#0c1425]/8 rounded-sm bg-[#fafaf8] p-4 space-y-3">
+      {/* Item text + current status */}
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-[#0c1425] leading-relaxed">
+          <span className="text-[#0c1425]/30 font-semibold mr-1.5">{index + 1}.</span>
+          {item.text}
+        </p>
+        <span className={`shrink-0 inline-flex items-center gap-1.5 text-[10px] tracking-[0.15em] uppercase font-bold ${statusText}`}>
+          <span className={`inline-block w-1.5 h-1.5 rounded-full ${statusBar}`} />
+          {statusLabels[(item.status ?? "pending") as StatusType]}
+        </span>
+      </div>
+
+      {/* Owner + deadline metadata */}
+      <div className="flex gap-5 text-[11px] text-[#0c1425]/50">
+        <span>
+          <span className="text-[9px] tracking-[0.18em] uppercase text-[#0c1425]/30 font-semibold mr-1.5">Owner</span>
+          <span className="font-medium text-[#0c1425]/70">{item.owner || "—"}</span>
+        </span>
+        <span>
+          <span className="text-[9px] tracking-[0.18em] uppercase text-[#0c1425]/30 font-semibold mr-1.5">Due</span>
+          <span className="font-medium text-[#0c1425]/70 tabular-nums">{formatDeadline(item.deadline)}</span>
+        </span>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#0c1425]/6">
+        <select
+          value={edit.status}
+          onChange={(e) => onUpdateEdit(commitmentId, index, { status: e.target.value as StatusType })}
+          className="h-7 px-2 pr-6 rounded-sm border border-[#0c1425]/12 bg-white text-[11px] text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%230c142540'/%3E%3C/svg%3E")`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 8px center",
+          }}
+        >
+          {ALL_STATUSES.map((s) => (
+            <option key={s} value={s}>{statusLabels[s]}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={() => onSaveItem(commitmentId, index)}
+          disabled={!isDirty || isSaving}
+          className="h-7 px-3 rounded-sm bg-[#0c1425] text-white text-[10px] tracking-[0.15em] uppercase font-bold hover:bg-[#162033] disabled:opacity-30 transition-colors"
+        >
+          {isSaving ? "Saving…" : "Save"}
+        </button>
+      </div>
+
+      {/* Notes textarea — shown when status is set */}
+      {edit.status !== "pending" && (
+        <textarea
+          value={edit.notes}
+          onChange={(e) => onUpdateEdit(commitmentId, index, { notes: e.target.value.slice(0, 2000) })}
+          placeholder="Progress notes…"
+          maxLength={2000}
+          rows={2}
+          className="w-full px-3 py-2 rounded-sm border border-[#0c1425]/10 bg-white text-xs text-[#0c1425]/80 placeholder:text-[#0c1425]/25 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 resize-none"
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Commitment Card ──────────────────────────────────────────────────────────
+
+function CommitmentCard({
+  c,
+  edits,
+  itemEdits,
+  savingId,
+  savingItemKey,
+  obsOpen,
+  onUpdateEdit,
+  onUpdateItemEdit,
+  onSave,
+  onSaveItem,
+  onToggleObs,
+}: {
+  c: Commitment;
+  edits: Record<string, { status: StatusType; completion_notes: string }>;
+  itemEdits: Record<string, { status: StatusType; notes: string }>;
+  savingId: string | null;
+  savingItemKey: string | null;
+  obsOpen: Record<string, boolean>;
+  onUpdateEdit: (id: string, patch: Partial<{ status: StatusType; completion_notes: string }>) => void;
+  onUpdateItemEdit: (cid: string, idx: number, patch: Partial<{ status: StatusType; notes: string }>) => void;
+  onSave: (id: string) => void;
+  onSaveItem: (cid: string, idx: number) => void;
+  onToggleObs: (id: string) => void;
+}) {
+  const edit = edits[c.id] ?? { status: c.status, completion_notes: c.completion_notes ?? "" };
+  const isDirty =
+    edit.status !== c.status || edit.completion_notes !== (c.completion_notes ?? "");
+
+  const hasDetailed =
+    Array.isArray(c.action_items_detailed) && c.action_items_detailed.length > 0;
+
+  const headerParts: string[] = [];
+  if (c.chair_name) headerParts.push(c.chair_name);
+  if (c.co_chair_name) headerParts.push(c.co_chair_name);
+  const leaderDisplay = headerParts.length > 0
+    ? headerParts.join(" · ")
+    : (c.respondent_name ?? null);
+
+  const observations = c.dimension_observations ?? null;
+  const observationEntries = observations
+    ? Object.entries(observations).filter(([, v]) => typeof v === "string" && v.trim().length > 0)
+    : [];
+  const obsExpanded = !!obsOpen[c.id];
+
+  return (
+    <article className="bg-white border border-[#0c1425]/8 rounded-sm overflow-hidden">
+      {/* Card header — accent left border in gold */}
+      <div className="flex border-l-[3px] border-[#c4a35a]">
+        <div className="flex-1 px-6 py-5">
+          {/* Vertical + region + leaders row */}
+          <div className="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <h3 className="font-display text-xl text-[#0c1425] leading-tight">
+                {c.vertical_name}
+              </h3>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {c.region && (
+                  <span className="text-[10px] tracking-[0.15em] uppercase font-semibold text-[#0c1425]/35">
+                    {c.region}
+                  </span>
+                )}
+                {leaderDisplay && (
+                  <>
+                    {c.region && <span className="text-[#0c1425]/20 text-xs">·</span>}
+                    <span className="text-xs italic text-[#0c1425]/45">{leaderDisplay}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right meta cluster */}
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <time className="text-[10px] tabular-nums text-[#0c1425]/30">
+                {new Date(c.created_at).toLocaleDateString("en-IN", {
+                  day: "numeric", month: "short", year: "numeric",
+                })}
+              </time>
+              <div className="flex items-center gap-2">
+                <a
+                  href={buildChairMailto(c)}
+                  className="h-7 px-3 inline-flex items-center rounded-sm border border-[#0c1425]/12 text-[9px] tracking-[0.18em] uppercase font-bold text-[#0c1425]/45 hover:text-[#c4a35a] hover:border-[#c4a35a]/40 transition-colors"
+                  title="Open email draft to Chair & Co-Chair"
+                >
+                  Email Chairs
+                </a>
+                <a
+                  href={`/admin/present/${c.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-7 px-3 inline-flex items-center rounded-sm border border-[#c4a35a]/40 text-[9px] tracking-[0.18em] uppercase font-bold text-[#c4a35a] hover:bg-[#c4a35a]/8 transition-colors"
+                  title="Open full-screen presentation view"
+                >
+                  Present ↗
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Horizontal rule */}
+          <hr className="border-0 border-t border-[#0c1425]/6 my-3" />
+
+          {/* Focus line */}
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm mb-3">
+            <span className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/30">
+              Focus
+            </span>
+            <span className="font-semibold text-[#0c1425]">{c.focus_dimension}</span>
+            <span className="text-[#0c1425]/25">·</span>
+            <span className="text-[#0c1425]/40 text-xs tabular-nums">{c.focus_dimension_score}/25</span>
+            <span className="text-[#0c1425]/25">·</span>
+            <span className="text-[#0c1425]/60 font-semibold tabular-nums">
+              L{c.current_level}
+            </span>
+            <span className="text-[#c4a35a] text-xs">→</span>
+            <span className="text-[#c4a35a] font-bold tabular-nums">
+              L{c.target_level}
+            </span>
+          </div>
+
+          {/* Focus reason — italic block quote */}
+          {c.focus_reason && c.focus_reason.trim().length > 0 && (
+            <blockquote className="text-sm italic text-[#0c1425]/50 border-l-2 border-[#c4a35a]/30 pl-3.5 py-1 mb-4 leading-relaxed">
+              {c.focus_reason}
+            </blockquote>
+          )}
+        </div>
+      </div>
+
+      {/* Body — 2-column: action items + status sidebar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 border-t border-[#0c1425]/6">
+
+        {/* Left: action items (2 cols wide) */}
+        <div className="md:col-span-2 px-6 py-5 space-y-4">
+          {/* Detailed action items */}
+          {hasDetailed ? (
+            <div className="space-y-2">
+              <p className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/30 mb-3">
+                Action Commitments
+              </p>
+              <div className="space-y-3">
+                {c.action_items_detailed!.map((item, i) => (
+                  <ActionItemCard
+                    key={i}
+                    commitmentId={c.id}
+                    index={i}
+                    item={item}
+                    itemEdits={itemEdits}
+                    savingItemKey={savingItemKey}
+                    onUpdateEdit={onUpdateItemEdit}
+                    onSaveItem={onSaveItem}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            c.action_items && c.action_items.length > 0 && (
+              <div>
+                <p className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/30 mb-3">
+                  Action Commitments
+                </p>
+                <ol className="space-y-2">
+                  {c.action_items.map((item, i) => (
+                    <li key={i} className="flex gap-3 text-sm text-[#0c1425]/70 leading-relaxed">
+                      <span className="text-[#0c1425]/25 font-semibold tabular-nums shrink-0 mt-px">{i + 1}.</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )
+          )}
+
+          {/* Quick observations (collapsible) */}
+          {observationEntries.length > 0 && (
+            <div className="pt-2 border-t border-[#0c1425]/6">
+              <button
+                type="button"
+                onClick={() => onToggleObs(c.id)}
+                className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/35 hover:text-[#c4a35a] inline-flex items-center gap-1.5 transition-colors"
+              >
+                <span className="text-[10px]">{obsExpanded ? "▾" : "▸"}</span>
+                Quick Observations ({observationEntries.length})
+              </button>
+              {obsExpanded && (
+                <ul className="mt-3 space-y-2 border-l-2 border-[#0c1425]/8 pl-4">
+                  {observationEntries.map(([dim, text]) => (
+                    <li key={dim} className="text-sm leading-relaxed">
+                      <span className="font-semibold text-[#0c1425]/70">{dim}: </span>
+                      <span className="text-[#0c1425]/50">{text}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right: status sidebar */}
+        <div className="md:border-l border-t md:border-t-0 border-[#0c1425]/6 px-6 py-5 space-y-5 bg-[#fafaf8]/60">
+          {/* Current overall status */}
+          <div>
+            <p className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/30 mb-2">
+              {hasDetailed ? "Overall Status" : "Status"}
+            </p>
+            <StatusPill status={c.status} />
+          </div>
+
+          {/* Update status */}
+          <div>
+            <p className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/30 mb-2">
+              Update
+            </p>
+            <select
+              value={edit.status}
+              onChange={(e) => onUpdateEdit(c.id, { status: e.target.value as StatusType })}
+              className="w-full h-8 px-3 pr-7 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%230c142540'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 10px center",
+              }}
+            >
+              {ALL_STATUSES.map((s) => (
+                <option key={s} value={s}>{statusLabels[s]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Completion notes */}
+          {edit.status !== "pending" && (
+            <div>
+              <p className="text-[9px] tracking-[0.22em] uppercase font-bold text-[#0c1425]/30 mb-2">
+                Notes
+              </p>
+              <textarea
+                value={edit.completion_notes}
+                onChange={(e) => onUpdateEdit(c.id, { completion_notes: e.target.value })}
+                placeholder="What was done, what's left…"
+                rows={3}
+                className="w-full px-3 py-2 rounded-sm border border-[#0c1425]/10 bg-white text-xs text-[#0c1425]/80 placeholder:text-[#0c1425]/25 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 resize-none"
+              />
+            </div>
+          )}
+
+          {/* Save button */}
+          <button
+            onClick={() => onSave(c.id)}
+            disabled={!isDirty || savingId === c.id}
+            className="w-full h-8 rounded-sm bg-[#0c1425] text-white text-[10px] tracking-[0.18em] uppercase font-bold hover:bg-[#162033] disabled:opacity-30 transition-colors"
+          >
+            {savingId === c.id ? "Saving…" : "Save"}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CommitmentsPage() {
   const [storedPassword, setStoredPassword] = useState("");
@@ -242,29 +590,23 @@ export default function CommitmentsPage() {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Filters
   const [filterVertical, setFilterVertical] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterMeeting, setFilterMeeting] = useState("");
 
-  // Per-row local edits (legacy: commitment-level status/notes)
   const [edits, setEdits] = useState<
     Record<string, { status: StatusType; completion_notes: string }>
   >({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  // Per-item local edits — keyed by `${commitmentId}:${index}`
   const [itemEdits, setItemEdits] = useState<
     Record<string, { status: StatusType; notes: string }>
   >({});
   const [savingItemKey, setSavingItemKey] = useState<string | null>(null);
 
-  // Expanded "Quick observations" section state — keyed by commitment id
   const [obsOpen, setObsOpen] = useState<Record<string, boolean>>({});
 
-  // Check session - redirect if not authenticated.
-  // Also honor ?vertical=<name> to preselect the vertical filter (used by the
-  // live dashboard's "Present Commitments" shortcut).
+  // Auth check + ?vertical= query param
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
     if (!saved) {
@@ -307,15 +649,12 @@ export default function CommitmentsPage() {
     if (authenticated) fetchCommitments();
   }, [authenticated, fetchCommitments]);
 
-  // Initialize edit state when commitments load
+  // Sync edit state when commitments load
   useEffect(() => {
     const next: Record<string, { status: StatusType; completion_notes: string }> = {};
     const nextItems: Record<string, { status: StatusType; notes: string }> = {};
     commitments.forEach((c) => {
-      next[c.id] = {
-        status: c.status,
-        completion_notes: c.completion_notes ?? "",
-      };
+      next[c.id] = { status: c.status, completion_notes: c.completion_notes ?? "" };
       if (Array.isArray(c.action_items_detailed)) {
         c.action_items_detailed.forEach((item, i) => {
           nextItems[`${c.id}:${i}`] = {
@@ -329,33 +668,18 @@ export default function CommitmentsPage() {
     setItemEdits(nextItems);
   }, [commitments]);
 
-  const updateEdit = (
-    id: string,
-    patch: Partial<{ status: StatusType; completion_notes: string }>,
-  ) => {
+  const updateEdit = (id: string, patch: Partial<{ status: StatusType; completion_notes: string }>) => {
     setEdits((prev) => ({
       ...prev,
-      [id]: {
-        status: prev[id]?.status ?? "pending",
-        completion_notes: prev[id]?.completion_notes ?? "",
-        ...patch,
-      },
+      [id]: { status: prev[id]?.status ?? "pending", completion_notes: prev[id]?.completion_notes ?? "", ...patch },
     }));
   };
 
-  const updateItemEdit = (
-    commitmentId: string,
-    index: number,
-    patch: Partial<{ status: StatusType; notes: string }>,
-  ) => {
+  const updateItemEdit = (commitmentId: string, index: number, patch: Partial<{ status: StatusType; notes: string }>) => {
     const key = `${commitmentId}:${index}`;
     setItemEdits((prev) => ({
       ...prev,
-      [key]: {
-        status: prev[key]?.status ?? "pending",
-        notes: prev[key]?.notes ?? "",
-        ...patch,
-      },
+      [key]: { status: prev[key]?.status ?? "pending", notes: prev[key]?.notes ?? "", ...patch },
     }));
   };
 
@@ -378,26 +702,15 @@ export default function CommitmentsPage() {
       return;
     }
     setSavingItemKey(key);
-    const result = await updateActionItem(
-      commitmentId,
-      index,
-      edit.status,
-      edit.notes ?? "",
-      storedPassword,
-    );
+    const result = await updateActionItem(commitmentId, index, edit.status, edit.notes ?? "", storedPassword);
     if (result.error) alert(result.error);
     else await fetchCommitments();
     setSavingItemKey(null);
   };
 
-  // Summary stats — count action items across all commitments when detailed
-  // data exists; fall back to commitment-level status otherwise.
+  // Summary stats
   const stats = useMemo(() => {
-    let total = 0;
-    let done = 0;
-    let inProgress = 0;
-    let pendingMissed = 0;
-
+    let total = 0, done = 0, inProgress = 0, pendingMissed = 0;
     commitments.forEach((c) => {
       if (Array.isArray(c.action_items_detailed) && c.action_items_detailed.length > 0) {
         c.action_items_detailed.forEach((item) => {
@@ -405,17 +718,16 @@ export default function CommitmentsPage() {
           const s = (item.status ?? "pending") as StatusType;
           if (s === "done") done += 1;
           else if (s === "in_progress" || s === "partial") inProgress += 1;
-          else if (s === "pending" || s === "missed") pendingMissed += 1;
+          else pendingMissed += 1;
         });
       } else {
         total += 1;
         const s = c.status;
         if (s === "done") done += 1;
         else if (s === "in_progress" || s === "partial") inProgress += 1;
-        else if (s === "pending" || s === "missed") pendingMissed += 1;
+        else pendingMissed += 1;
       }
     });
-
     return { total, done, inProgress, pendingMissed };
   }, [commitments]);
 
@@ -427,7 +739,6 @@ export default function CommitmentsPage() {
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     });
-    // Sort groups: known meetings first, "Unassigned" last
     return Array.from(map.entries()).sort(([a], [b]) => {
       if (a === "Unassigned") return 1;
       if (b === "Unassigned") return -1;
@@ -437,489 +748,160 @@ export default function CommitmentsPage() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-parchment flex items-center justify-center">
-        <p className="text-navy/40 text-sm">Redirecting...</p>
+      <div className="min-h-screen bg-[#fafaf8] flex items-center justify-center">
+        <span className="text-[10px] tracking-[0.25em] uppercase text-[#0c1425]/30 font-semibold">
+          Redirecting…
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-parchment">
-      {/* Header */}
-      <div className="bg-navy px-6 py-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#fafaf8]" style={{ fontFamily: "var(--font-body, system-ui)" }}>
+
+      {/* ── Masthead ──────────────────────────────────────────────────── */}
+      <header className="bg-[#0c1425]">
+        <div className="border-b border-[#c4a35a]/20" />
+        <div className="max-w-7xl mx-auto px-6 pt-6 pb-3 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] tracking-[0.3em] uppercase text-gold/50">
-              NMT Admin
+            <p className="text-[9px] tracking-[0.38em] uppercase text-[#c4a35a]/50 font-semibold mb-1.5">
+              Young Indians · NMT Diagnostic
             </p>
-            <h1 className="font-display text-2xl text-white">
+            <h1 className="font-display text-[1.85rem] leading-tight text-white tracking-tight">
               Commitments Tracker
             </h1>
           </div>
-          <div className="flex gap-3">
-            <a
-              href="/admin"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Dashboard
-            </a>
-            <a
-              href="/admin/live"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Live View
-            </a>
-            <span className="h-9 px-4 rounded-lg border border-gold/40 text-gold text-xs tracking-wider uppercase inline-flex items-center">
-              Commitments
-            </span>
-            <a
-              href="/"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Back to Test
-            </a>
+          <div className="flex items-center gap-2 flex-wrap justify-end pb-1">
+            <NavLink href="/admin" label="Dashboard" />
+            <NavLink href="/admin/live" label="Live View" />
+            <NavLink href="/admin/commitments" label="Commitments" active />
+            <NavLink href="/" label="← Test" />
+          </div>
+        </div>
+        <div className="border-b border-white/[0.06]" />
+        <div className="border-b border-[#c4a35a]/20 mt-[1px]" />
+      </header>
+
+      {/* ── Stat band ─────────────────────────────────────────────────── */}
+      <div className="border-b border-[#0c1425]/8 bg-white">
+        <div className="max-w-7xl mx-auto px-2">
+          <div className="grid grid-cols-2 sm:flex sm:flex-row divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-[#0c1425]/8">
+            <StatCell label="Total Action Items" value={stats.total.toString()} />
+            <StatCell label="Completed" value={stats.done.toString()} accent />
+            <StatCell label="In Progress" value={stats.inProgress.toString()} />
+            <StatCell label="Pending / Missed" value={stats.pendingMissed.toString()} />
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: "Total Action Items", value: stats.total.toString() },
-            { label: "Completed", value: stats.done.toString() },
-            { label: "In Progress", value: stats.inProgress.toString() },
-            { label: "Pending / Missed", value: stats.pendingMissed.toString() },
-          ].map((card) => (
-            <Card
-              key={card.label}
-              className="border border-navy/5 shadow-none bg-white"
-            >
-              <CardContent className="p-4">
-                <p className="text-[10px] tracking-[0.15em] uppercase text-navy/30 font-semibold">
-                  {card.label}
-                </p>
-                <p className="font-display text-3xl text-navy mt-1">
-                  {card.value}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {/* ── Main content ─────────────────────────────────────────────── */}
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Select
+        {/* ── Filter bar ─────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
             value={filterVertical}
-            onValueChange={(v) => v && setFilterVertical(v)}
+            onChange={(e) => setFilterVertical(e.target.value)}
+            className="h-8 px-3 pr-7 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230c142540'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 10px center",
+            }}
           >
-            <SelectTrigger className="w-48 h-9 bg-white border-navy/10 text-sm">
-              <SelectValue placeholder="All Verticals" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Verticals</SelectItem>
-              {verticals.map((v) => (
-                <SelectItem key={v.name} value={v.name}>
-                  {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="all">All Verticals</option>
+            {verticals.map((v) => (
+              <option key={v.name} value={v.name}>{v.name}</option>
+            ))}
+          </select>
 
-          <Select
+          <select
             value={filterStatus}
-            onValueChange={(v) => v && setFilterStatus(v)}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="h-8 px-3 pr-7 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230c142540'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 10px center",
+            }}
           >
-            <SelectTrigger className="w-40 h-9 bg-white border-navy/10 text-sm">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {ALL_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {statusLabels[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="all">All Statuses</option>
+            {ALL_STATUSES.map((s) => (
+              <option key={s} value={s}>{statusLabels[s]}</option>
+            ))}
+          </select>
 
           <input
             type="text"
             value={filterMeeting}
             onChange={(e) => setFilterMeeting(e.target.value)}
-            placeholder="Target meeting..."
-            className="h-9 px-3 rounded-lg border border-navy/10 bg-white text-sm text-navy/70 w-56"
+            placeholder="Target meeting…"
+            className="h-8 px-3 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 placeholder:text-[#0c1425]/30 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 w-52"
           />
 
           <div className="flex-1" />
 
-          <span className="text-xs text-navy/30">
-            {commitments.length} commitment
-            {commitments.length !== 1 ? "s" : ""}
+          <span className="text-[10px] tracking-[0.15em] uppercase text-[#0c1425]/30 font-semibold">
+            {commitments.length} commitment{commitments.length !== 1 ? "s" : ""}
           </span>
         </div>
 
-        {/* Content */}
+        {/* ── Content ────────────────────────────────────────────────── */}
         {loading ? (
-          <div className="p-12 text-center text-navy/30 text-sm bg-white rounded-lg border border-navy/5">
-            Loading...
+          <div className="py-20 text-center">
+            <span className="text-[10px] tracking-[0.22em] uppercase text-[#0c1425]/25 font-semibold">
+              Loading commitments…
+            </span>
           </div>
         ) : commitments.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-lg border border-navy/5">
-            <p className="font-display text-xl text-navy/70 mb-2">
+          <div className="py-20 bg-white border border-[#0c1425]/8 rounded-sm text-center">
+            <p className="font-display text-2xl text-[#0c1425]/50 mb-2">
               No commitments captured yet
             </p>
-            <p className="text-sm text-navy/40">
-              They&apos;ll appear here as verticals complete their assessments.
+            <p className="text-sm text-[#0c1425]/30">
+              They will appear here as verticals complete their assessments.
             </p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-10">
             {grouped.map(([meeting, items]) => (
-              <section key={meeting} className="space-y-3">
-                <div className="flex items-baseline justify-between pb-2 border-b border-navy/10">
-                  <h2 className="font-display text-2xl text-navy">{meeting}</h2>
-                  <span className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold">
-                    {items.length} commitment{items.length !== 1 ? "s" : ""}
-                  </span>
+              <section key={meeting} className="space-y-4">
+                {/* Section heading — editorial double-rule treatment */}
+                <div>
+                  <div className="border-t-2 border-[#0c1425] mb-2" />
+                  <div className="flex items-baseline justify-between pb-2 border-b border-[#0c1425]/12">
+                    <h2 className="font-display text-2xl text-[#0c1425]">
+                      {meeting}
+                    </h2>
+                    <span className="text-[10px] tracking-[0.2em] uppercase font-semibold text-[#0c1425]/30">
+                      {items.length} commitment{items.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  {items.map((c) => {
-                    const edit = edits[c.id] ?? {
-                      status: c.status,
-                      completion_notes: c.completion_notes ?? "",
-                    };
-                    const dirty =
-                      edit.status !== c.status ||
-                      edit.completion_notes !== (c.completion_notes ?? "");
-
-                    const hasDetailed =
-                      Array.isArray(c.action_items_detailed) &&
-                      c.action_items_detailed.length > 0;
-
-                    // Header — Chair / Co-Chair / Respondent fallback
-                    const headerParts: string[] = [];
-                    if (c.chair_name) headerParts.push(`Chair: ${c.chair_name}`);
-                    if (c.co_chair_name) headerParts.push(`Co-Chair: ${c.co_chair_name}`);
-                    if (headerParts.length === 0 && c.respondent_name) {
-                      headerParts.push(c.respondent_name);
-                    }
-                    const headerMeta = [c.region, headerParts.join(" · ")]
-                      .filter(Boolean)
-                      .join(" · ");
-
-                    const observations = c.dimension_observations ?? null;
-                    const observationEntries = observations
-                      ? Object.entries(observations).filter(
-                          ([, v]) => typeof v === "string" && v.trim().length > 0,
-                        )
-                      : [];
-                    const obsExpanded = !!obsOpen[c.id];
-
-                    return (
-                      <Card
-                        key={c.id}
-                        className="border border-navy/5 shadow-none bg-white"
-                      >
-                        <CardContent className="p-5">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                            {/* Left: main content (2 cols) */}
-                            <div className="md:col-span-2 space-y-3">
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="font-semibold text-navy text-base">
-                                    {c.vertical_name}
-                                  </p>
-                                  <p className="text-xs text-navy/50 mt-0.5">
-                                    {headerMeta || "—"}
-                                  </p>
-                                </div>
-                                <div className="flex flex-col items-end gap-1.5 whitespace-nowrap">
-                                  <p className="text-[10px] text-navy/40 tabular-nums">
-                                    {new Date(c.created_at).toLocaleDateString(
-                                      "en-IN",
-                                      {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                      },
-                                    )}
-                                  </p>
-                                  <a
-                                    href={buildChairMailto(c)}
-                                    className="inline-flex items-center h-7 px-3 rounded-md border border-navy/10 text-navy/60 text-[10px] tracking-[0.15em] uppercase font-semibold hover:border-gold hover:text-gold transition-colors"
-                                    title="Open email draft to Chair & Co-Chair"
-                                  >
-                                    Email Chairs
-                                  </a>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-3 text-sm">
-                                <span className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold">
-                                  Focus
-                                </span>
-                                <span className="text-navy">
-                                  {c.focus_dimension}
-                                </span>
-                                <span className="text-navy/30">·</span>
-                                <span className="font-medium text-navy">
-                                  L{c.current_level}
-                                </span>
-                                <span className="text-navy/30">→</span>
-                                <span className="font-medium text-gold">
-                                  L{c.target_level}
-                                </span>
-                              </div>
-
-                              {c.focus_reason && c.focus_reason.trim().length > 0 && (
-                                <div className="text-sm text-navy/60 italic border-l-2 border-gold/30 pl-3 py-1 mt-2">
-                                  <span className="not-italic font-semibold text-navy/70">
-                                    Why this dimension?
-                                  </span>{" "}
-                                  {c.focus_reason}
-                                </div>
-                              )}
-
-                              {/* Action Items — detailed cards OR legacy numbered list */}
-                              {hasDetailed ? (
-                                <div className="space-y-2">
-                                  <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold">
-                                    Action Items
-                                  </p>
-                                  <div className="space-y-3">
-                                    {c.action_items_detailed!.map((item, i) => {
-                                      const itemKey = `${c.id}:${i}`;
-                                      const itemEdit =
-                                        itemEdits[itemKey] ?? {
-                                          status: (item.status ?? "pending") as StatusType,
-                                          notes: item.notes ?? "",
-                                        };
-                                      const itemDirty =
-                                        itemEdit.status !== (item.status ?? "pending") ||
-                                        (itemEdit.notes ?? "") !== (item.notes ?? "");
-                                      const saving = savingItemKey === itemKey;
-                                      return (
-                                        <div
-                                          key={i}
-                                          className="rounded-lg border border-navy/10 bg-parchment/40 p-3 space-y-2"
-                                        >
-                                          <div className="flex items-start justify-between gap-3">
-                                            <p className="text-sm text-navy font-medium leading-snug">
-                                              {i + 1}. {item.text}
-                                            </p>
-                                            <Badge
-                                              className={`text-[10px] border whitespace-nowrap ${statusColors[(item.status ?? "pending") as StatusType]}`}
-                                            >
-                                              {statusLabels[(item.status ?? "pending") as StatusType]}
-                                            </Badge>
-                                          </div>
-
-                                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-navy/60">
-                                            <span>
-                                              <span className="text-navy/40 uppercase tracking-wider text-[10px] mr-1">
-                                                Owner
-                                              </span>
-                                              <span className="text-navy/80 font-medium">
-                                                {item.owner || "—"}
-                                              </span>
-                                            </span>
-                                            <span className="text-navy/20">·</span>
-                                            <span>
-                                              <span className="text-navy/40 uppercase tracking-wider text-[10px] mr-1">
-                                                Deadline
-                                              </span>
-                                              <span className="text-navy/80 font-medium tabular-nums">
-                                                {formatDeadline(item.deadline)}
-                                              </span>
-                                            </span>
-                                          </div>
-
-                                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-                                            <Select
-                                              value={itemEdit.status}
-                                              onValueChange={(v) =>
-                                                v &&
-                                                updateItemEdit(c.id, i, {
-                                                  status: v as StatusType,
-                                                })
-                                              }
-                                            >
-                                              <SelectTrigger className="h-8 bg-white border-navy/10 text-xs">
-                                                <SelectValue />
-                                              </SelectTrigger>
-                                              <SelectContent>
-                                                {ALL_STATUSES.map((s) => (
-                                                  <SelectItem key={s} value={s}>
-                                                    {statusLabels[s]}
-                                                  </SelectItem>
-                                                ))}
-                                              </SelectContent>
-                                            </Select>
-
-                                            <Button
-                                              onClick={() => handleSaveItem(c.id, i)}
-                                              disabled={!itemDirty || saving}
-                                              className="h-8 bg-navy hover:bg-navy-light text-white text-[11px] tracking-wider uppercase disabled:opacity-40 sm:col-start-3"
-                                            >
-                                              {saving ? "Saving..." : "Save item"}
-                                            </Button>
-                                          </div>
-
-                                          {itemEdit.status !== "pending" && (
-                                            <textarea
-                                              value={itemEdit.notes}
-                                              onChange={(e) =>
-                                                updateItemEdit(c.id, i, {
-                                                  notes: e.target.value.slice(0, 2000),
-                                                })
-                                              }
-                                              placeholder="Notes on progress..."
-                                              maxLength={2000}
-                                              rows={2}
-                                              className="w-full px-2 py-1.5 rounded-md border border-navy/10 bg-white text-xs text-navy/80 placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold/40 resize-none"
-                                            />
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              ) : (
-                                c.action_items && c.action_items.length > 0 && (
-                                  <div>
-                                    <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2">
-                                      Action Items
-                                    </p>
-                                    <ol className="list-decimal list-inside space-y-1 text-sm text-navy/75 marker:text-navy/30">
-                                      {c.action_items.map((item, i) => (
-                                        <li key={i}>{item}</li>
-                                      ))}
-                                    </ol>
-                                  </div>
-                                )
-                              )}
-
-                              {/* Quick observations (collapsible) */}
-                              {observationEntries.length > 0 && (
-                                <div className="pt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setObsOpen((prev) => ({
-                                        ...prev,
-                                        [c.id]: !prev[c.id],
-                                      }))
-                                    }
-                                    className="text-[10px] tracking-[0.15em] uppercase text-navy/50 hover:text-gold font-semibold inline-flex items-center gap-1"
-                                  >
-                                    <span>{obsExpanded ? "▾" : "▸"}</span>
-                                    Quick observations ({observationEntries.length})
-                                  </button>
-                                  {obsExpanded && (
-                                    <ul className="mt-2 space-y-1.5 text-sm text-navy/75 border-l-2 border-navy/10 pl-3">
-                                      {observationEntries.map(([dim, text]) => (
-                                        <li key={dim}>
-                                          <span className="font-semibold text-navy">
-                                            {dim}:
-                                          </span>{" "}
-                                          <span className="text-navy/70">{text}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Right: status controls (commitment-level — legacy) */}
-                            <div className="space-y-3 md:border-l md:border-navy/5 md:pl-5">
-                              <div>
-                                <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2">
-                                  {hasDetailed ? "Overall Status" : "Current Status"}
-                                </p>
-                                <Badge
-                                  className={`text-[11px] border ${statusColors[c.status]}`}
-                                >
-                                  {statusLabels[c.status]}
-                                </Badge>
-                              </div>
-
-                              <div>
-                                <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2">
-                                  Update Status
-                                </p>
-                                <Select
-                                  value={edit.status}
-                                  onValueChange={(v) =>
-                                    v &&
-                                    updateEdit(c.id, {
-                                      status: v as StatusType,
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger className="w-full h-9 bg-white border-navy/10 text-sm">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {ALL_STATUSES.map((s) => (
-                                      <SelectItem key={s} value={s}>
-                                        {statusLabels[s]}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {edit.status !== "pending" && (
-                                <div>
-                                  <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2">
-                                    Completion Notes
-                                  </p>
-                                  <textarea
-                                    value={edit.completion_notes}
-                                    onChange={(e) =>
-                                      updateEdit(c.id, {
-                                        completion_notes: e.target.value,
-                                      })
-                                    }
-                                    placeholder="What was done, what's left..."
-                                    rows={3}
-                                    className="w-full px-3 py-2 rounded-lg border border-navy/10 bg-white text-sm text-navy/80 placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold/40 resize-none"
-                                  />
-                                </div>
-                              )}
-
-                              <Button
-                                onClick={() => handleSave(c.id)}
-                                disabled={!dirty || savingId === c.id}
-                                className="w-full h-9 bg-navy hover:bg-navy-light text-white text-xs tracking-wider uppercase disabled:opacity-40"
-                              >
-                                {savingId === c.id ? "Saving..." : "Save"}
-                              </Button>
-
-                              <a
-                                href={`/admin/present/${c.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full h-9 rounded-lg border border-gold/40 text-gold hover:bg-gold/5 text-xs tracking-wider uppercase inline-flex items-center justify-center transition-colors"
-                                title="Open full-screen presentation view in a new tab"
-                              >
-                                Present
-                              </a>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                <div className="space-y-4">
+                  {items.map((c) => (
+                    <CommitmentCard
+                      key={c.id}
+                      c={c}
+                      edits={edits}
+                      itemEdits={itemEdits}
+                      savingId={savingId}
+                      savingItemKey={savingItemKey}
+                      obsOpen={obsOpen}
+                      onUpdateEdit={updateEdit}
+                      onUpdateItemEdit={updateItemEdit}
+                      onSave={handleSave}
+                      onSaveItem={handleSaveItem}
+                      onToggleObs={(id) => setObsOpen((prev) => ({ ...prev, [id]: !prev[id] }))}
+                    />
+                  ))}
                 </div>
               </section>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

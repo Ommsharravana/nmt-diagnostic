@@ -31,35 +31,35 @@ const statusOptions: {
   description: string;
   pillSelected: string;
   pillIdle: string;
+  iconPath: string;
 }[] = [
   {
     value: "done",
     label: "Done",
     description: "All 3 actions delivered.",
-    pillSelected: "bg-emerald-600 border-emerald-600 text-white",
-    pillIdle:
-      "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300",
+    pillSelected: "bg-emerald-600 border-emerald-600 text-white shadow-md",
+    pillIdle: "bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400",
+    iconPath: "M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
   },
   {
     value: "partial",
     label: "Partial",
     description: "Some progress, not complete.",
-    pillSelected: "bg-amber-500 border-amber-500 text-white",
-    pillIdle:
-      "bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-300",
+    pillSelected: "bg-amber-500 border-amber-500 text-white shadow-md",
+    pillIdle: "bg-white border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400",
+    iconPath: "M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z",
   },
   {
     value: "missed",
     label: "Missed",
     description: "Didn't get to it.",
-    pillSelected: "bg-red-600 border-red-600 text-white",
-    pillIdle:
-      "bg-white border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300",
+    pillSelected: "bg-red-600 border-red-600 text-white shadow-md",
+    pillIdle: "bg-white border-red-200 text-red-700 hover:bg-red-50 hover:border-red-400",
+    iconPath: "m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z",
   },
 ];
 
-// Module-scoped fetch helper with timeout + error handling.
-// Keeps the click handler tiny so the silent-failure auditor can verify it.
+// Module-scoped fetch helpers with timeout
 async function patchCommitment(
   id: string,
   update: { status: ReviewStatus; completion_notes?: string },
@@ -88,7 +88,6 @@ async function patchCommitment(
   }
 }
 
-// Module-scoped fetch helper for loading pending commitments.
 async function fetchPendingCommitments(
   vertical: string,
 ): Promise<{ data?: PendingCommitment[]; error?: string }> {
@@ -146,7 +145,6 @@ export default function PriorCommitmentsCheck({
     fetchPendingCommitments(verticalName).then((result) => {
       if (cancelled) return;
       if (result.error) {
-        // On error, don't block the flow — proceed to the assessment.
         setLoadError(result.error);
         onAllReviewed();
         return;
@@ -210,168 +208,228 @@ export default function PriorCommitmentsCheck({
     onAllReviewed();
   }, [allAnswered, submitting, commitments, reviews, onAllReviewed]);
 
+  // ─── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-[40vh] flex items-center justify-center">
-        <p className="text-navy/40 text-sm">Checking prior commitments…</p>
+      <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4">
+        <div className="w-8 h-8 border-2 border-navy/15 border-t-gold/60 rounded-full animate-spin" />
+        <p className="text-sm text-navy/40 tracking-wide">Checking prior commitments…</p>
       </div>
     );
   }
 
-  if (loadError) {
-    // Shouldn't render — we call onAllReviewed() on load error.
-    return null;
-  }
+  if (loadError) return null;
 
+  // ─── Main render ───────────────────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-lg border border-gold/20 p-6 space-y-6">
-      <div>
-        <h2 className="font-display text-2xl text-navy">Before we begin…</h2>
-        <p className="text-sm text-navy/50 mt-1">
-          Last time, <span className="font-medium text-navy/80">{verticalName}</span>{" "}
-          committed to these actions. Let&apos;s close the loop before we
-          assess again.
+    <div className="space-y-6 animate-slide-up">
+      {/* Chapter header */}
+      <div className="text-center">
+        <div className="inline-flex flex-col items-center gap-2 mb-5">
+          <div className="w-px h-6 bg-gold/35" />
+          <span className="text-[10px] tracking-[0.3em] uppercase text-gold/65 font-semibold">Closing the Loop</span>
+          <div className="w-px h-6 bg-gold/35" />
+        </div>
+
+        <h2 className="font-display text-2xl sm:text-3xl text-navy mb-2 leading-tight">
+          Before we begin…
+        </h2>
+        <p className="text-sm text-navy/45 leading-relaxed max-w-sm mx-auto">
+          Last time, <span className="font-semibold text-navy/70">{verticalName}</span>{" "}
+          committed to these actions. Let&apos;s close the loop before the new assessment.
         </p>
       </div>
 
-      <ol className="space-y-5">
+      {/* Commitment cards */}
+      <ol className="space-y-5" aria-label="Prior commitments to review">
         {commitments.map((c, idx) => {
           const review = reviews[c.id];
-          const selected = review?.status;
+          const selectedStatus = review?.status;
+
           return (
             <li
               key={c.id}
-              className="rounded-lg border border-navy/10 p-5 space-y-4"
+              className="bg-white rounded-2xl border border-navy/8 shadow-sm overflow-hidden"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold">
-                    Commitment {idx + 1} of {commitments.length}
-                  </p>
-                  <p className="font-semibold text-navy text-base mt-1">
-                    {c.target_meeting ?? "Next NMT"}
-                  </p>
-                  <p className="text-xs text-navy/50 mt-0.5">
-                    Committed {formatDate(c.created_at)}
-                    {c.target_date ? ` · Target ${formatDate(c.target_date)}` : ""}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold">
-                    Focus
-                  </p>
-                  <p className="text-sm text-navy mt-1">{c.focus_dimension}</p>
-                  <p className="text-xs text-navy/50 mt-0.5">
-                    L{c.current_level}{" "}
-                    <span className="text-navy/30">→</span>{" "}
-                    <span className="text-gold font-medium">
-                      L{c.target_level}
-                    </span>
-                  </p>
+              {/* Card header */}
+              <div className="bg-parchment/60 border-b border-navy/6 px-5 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-navy/35 font-semibold mb-1">
+                      Commitment {idx + 1} of {commitments.length}
+                    </p>
+                    <p className="font-display text-base text-navy leading-snug">
+                      {c.target_meeting ?? "Next NMT"}
+                    </p>
+                    <p className="text-xs text-navy/40 mt-1">
+                      Committed {formatDate(c.created_at)}
+                      {c.target_date ? ` · Target ${formatDate(c.target_date)}` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-navy/35 font-semibold mb-1">Focus</p>
+                    <p className="text-sm font-semibold text-navy leading-snug">{c.focus_dimension}</p>
+                    <p className="text-xs text-navy/40 mt-1 tabular-nums">
+                      L{c.current_level}
+                      <span className="text-navy/25 mx-1">→</span>
+                      <span className="text-gold font-semibold">L{c.target_level}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
 
+              {/* Action items */}
               {c.action_items && c.action_items.length > 0 && (
-                <div>
-                  <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2">
+                <div className="px-5 py-4 border-b border-navy/5">
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-navy/35 font-semibold mb-3">
                     Action Items
                   </p>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-navy/75 marker:text-navy/30">
+                  <ol className="space-y-2">
                     {c.action_items.map((item, i) => (
-                      <li key={i}>{item}</li>
+                      <li key={i} className="flex items-start gap-3 text-sm text-navy/70 leading-relaxed">
+                        <span className="font-display text-[11px] text-gold/60 mt-0.5 shrink-0 w-4 text-right">
+                          {["I", "II", "III"][i] ?? i + 1}
+                        </span>
+                        <span>{item}</span>
+                      </li>
                     ))}
                   </ol>
                 </div>
               )}
 
-              <div>
-                <p className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2">
-                  How did it go?
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {statusOptions.map((option) => {
-                    const isSelected = selected === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() =>
-                          updateReview(c.id, { status: option.value })
-                        }
-                        disabled={submitting}
-                        aria-pressed={isSelected}
-                        className={[
-                          "h-10 px-4 rounded-full border text-sm font-semibold tracking-wider uppercase transition-colors disabled:opacity-60 disabled:cursor-not-allowed",
-                          isSelected ? option.pillSelected : option.pillIdle,
-                        ].join(" ")}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selected && (
-                  <p className="text-xs text-navy/50 mt-2">
-                    {statusOptions.find((s) => s.value === selected)?.description}
+              {/* Status selection */}
+              <div className="px-5 py-4 space-y-4">
+                <div>
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-navy/35 font-semibold mb-3">
+                    How did it go?
                   </p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {statusOptions.map((option) => {
+                      const isSelected = selectedStatus === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateReview(c.id, { status: option.value })}
+                          disabled={submitting}
+                          aria-pressed={isSelected}
+                          className={[
+                            "inline-flex items-center gap-2 h-11 px-4 rounded-xl border text-sm font-semibold tracking-wide",
+                            "transition-all disabled:opacity-50 disabled:cursor-not-allowed",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
+                            isSelected ? option.pillSelected : option.pillIdle,
+                          ].join(" ")}
+                        >
+                          {/* Icon */}
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            strokeWidth={2} stroke="currentColor" className="w-4 h-4 shrink-0" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d={option.iconPath} />
+                          </svg>
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedStatus && (
+                    <p className="text-xs text-navy/40 mt-2 italic">
+                      {statusOptions.find((s) => s.value === selectedStatus)?.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Notes (shown when status selected) */}
+                {selectedStatus && (
+                  <div>
+                    <label
+                      htmlFor={`notes-${c.id}`}
+                      className="block text-[10px] tracking-[0.2em] uppercase text-navy/35 font-semibold mb-2.5"
+                    >
+                      Notes <span className="text-navy/25 font-normal normal-case tracking-normal text-xs">optional</span>
+                    </label>
+                    <textarea
+                      id={`notes-${c.id}`}
+                      value={review?.notes ?? ""}
+                      onChange={(e) => updateReview(c.id, { notes: e.target.value })}
+                      disabled={submitting}
+                      rows={3}
+                      maxLength={2000}
+                      placeholder="What worked, what got in the way, what's next…"
+                      className="w-full px-4 py-3 rounded-xl border border-navy/10 bg-white text-navy text-sm placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold/40 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm resize-y leading-relaxed transition-all"
+                    />
+                    <div className="text-[10px] text-navy/25 mt-1 text-right">
+                      {(review?.notes ?? "").length}/2000
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {selected && (
-                <div>
-                  <label
-                    htmlFor={`notes-${c.id}`}
-                    className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold mb-2 block"
-                  >
-                    Notes (optional)
-                  </label>
-                  <textarea
-                    id={`notes-${c.id}`}
-                    value={review?.notes ?? ""}
-                    onChange={(e) =>
-                      updateReview(c.id, { notes: e.target.value })
-                    }
-                    disabled={submitting}
-                    rows={3}
-                    maxLength={2000}
-                    placeholder="What worked, what got in the way, what's next…"
-                    className="w-full px-4 py-3 rounded-lg border border-navy/10 bg-white text-navy placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-gold/50 disabled:opacity-60 disabled:cursor-not-allowed resize-y"
-                  />
-                  <div className="text-[10px] text-navy/30 mt-1 text-right">
-                    {(review?.notes ?? "").length}/2000
-                  </div>
-                </div>
-              )}
             </li>
           );
         })}
       </ol>
 
+      {/* Submit error */}
       {submitError && (
         <div
           role="alert"
-          className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600"
+          className="border-l-2 border-red-400 pl-4 py-1"
         >
-          {submitError}
+          <p className="text-sm text-red-600">{submitError}</p>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4 pt-2 border-t border-navy/10">
+      {/* Progress indicator */}
+      {commitments.length > 1 && (
+        <div className="text-center">
+          <p className="text-xs text-navy/35 tracking-wide">
+            {commitments.filter((c) => reviews[c.id]?.status !== undefined).length} of {commitments.length} reviewed
+          </p>
+          <div className="mt-2 h-1 bg-navy/6 rounded-full overflow-hidden max-w-[160px] mx-auto">
+            <div
+              className="h-full bg-gold/60 rounded-full transition-all duration-500"
+              style={{
+                width: `${(commitments.filter((c) => reviews[c.id]?.status !== undefined).length / commitments.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Footer navigation */}
+      <div className="flex items-center justify-between gap-4 pt-2 border-t border-navy/8">
         <button
           type="button"
           onClick={onSkip}
           disabled={submitting}
-          className="text-sm text-navy/50 hover:text-navy underline underline-offset-4 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="text-sm text-navy/40 hover:text-navy/65 disabled:opacity-50 disabled:cursor-not-allowed transition-colors underline underline-offset-4"
         >
           Skip for now
         </button>
+
         <button
           type="button"
           onClick={handleSaveAndContinue}
           disabled={!allAnswered || submitting}
-          className="bg-gold hover:bg-gold-light text-navy font-semibold h-12 px-6 rounded-lg tracking-wider uppercase text-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+          className={[
+            "group inline-flex items-center gap-2.5 h-13 px-7 rounded-xl",
+            "text-sm font-semibold tracking-[0.08em] uppercase",
+            "transition-all shadow-md",
+            allAnswered && !submitting
+              ? "bg-navy text-white hover:bg-navy/90 active:scale-[0.98]"
+              : "bg-navy/20 text-white/50 cursor-not-allowed",
+          ].join(" ")}
         >
-          {submitting ? "Saving…" : "Save & Continue to Assessment"}
+          {submitting ? (
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Saving…
+            </span>
+          ) : (
+            <>
+              <span>Save &amp; Continue</span>
+              <span className="text-gold/80 transition-transform group-hover:translate-x-0.5">→</span>
+            </>
+          )}
         </button>
       </div>
     </div>

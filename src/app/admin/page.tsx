@@ -1,16 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { verticals, regions } from "@/lib/yi-data";
 import {
   RadarChart,
@@ -22,7 +12,8 @@ import {
   Legend,
 } from "recharts";
 
-// Module-scoped fetch helpers with timeout + typed errors.
+// ─── Module-scoped fetch helpers ────────────────────────────────────────────
+
 async function authenticate(password: string): Promise<{ valid: boolean; error?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
@@ -45,7 +36,10 @@ async function authenticate(password: string): Promise<{ valid: boolean; error?:
   }
 }
 
-async function listAssessments(params: URLSearchParams, pw: string): Promise<{ data?: AssessmentRow[]; error?: string }> {
+async function listAssessments(
+  params: URLSearchParams,
+  pw: string,
+): Promise<{ data?: AssessmentRow[]; error?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
   try {
@@ -66,7 +60,10 @@ async function listAssessments(params: URLSearchParams, pw: string): Promise<{ d
   }
 }
 
-async function exportCSV(params: URLSearchParams, pw: string): Promise<{ blob?: Blob; error?: string }> {
+async function exportCSV(
+  params: URLSearchParams,
+  pw: string,
+): Promise<{ blob?: Blob; error?: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30000);
   try {
@@ -87,6 +84,8 @@ async function exportCSV(params: URLSearchParams, pw: string): Promise<{ blob?: 
   }
 }
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 interface AssessmentRow {
   id: string;
   vertical_name: string;
@@ -100,6 +99,8 @@ interface AssessmentRow {
   created_at: string;
 }
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const maturityLabels: Record<number, string> = {
   1: "Fragile",
   2: "Emerging",
@@ -108,7 +109,152 @@ const maturityLabels: Record<number, string> = {
   5: "Flagship",
 };
 
-const compareColors = ["#c4a35a", "#2563eb", "#059669", "#dc2626", "#7c3aed", "#ea580c"];
+// Accessible, editorial colour palette for radar comparison
+const compareColors = ["#c4a35a", "#3b6ea5", "#4a7c59", "#b45309", "#7c3aed", "#be185d"];
+
+// Maturity level — editorial text treatment (no colour backgrounds)
+const maturityTextColor: Record<number, string> = {
+  1: "text-red-700",
+  2: "text-orange-700",
+  3: "text-amber-700",
+  4: "text-blue-700",
+  5: "text-emerald-700",
+};
+
+const dimNames = ["Strategy", "Penetration", "Execution", "Regional", "Impact", "Brand", "Continuity"];
+
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+/** Thin horizontal rule used as a section separator — editorial style */
+function Rule({ className = "" }: { className?: string }) {
+  return <hr className={`border-0 border-t border-[#0c1425]/10 ${className}`} />;
+}
+
+/** Column header with optional sort indicator */
+function ColHeader({
+  label,
+  align = "left",
+  sortable,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  align?: "left" | "right" | "center";
+  sortable?: boolean;
+  active?: boolean;
+  dir?: "asc" | "desc";
+  onClick?: () => void;
+}) {
+  const alignClass = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
+  return (
+    <th
+      className={`px-4 py-3 text-[10px] tracking-[0.18em] uppercase font-semibold select-none ${alignClass} ${
+        sortable ? "cursor-pointer" : ""
+      } ${active ? "text-[#c4a35a]" : "text-[#0c1425]/35"} hover:${sortable ? "text-[#c4a35a]" : ""} transition-colors`}
+      onClick={onClick}
+    >
+      {label}
+      {sortable && active && (
+        <span className="ml-1 opacity-80">{dir === "desc" ? "↓" : "↑"}</span>
+      )}
+    </th>
+  );
+}
+
+/** Editorial stat block — serif numeral over small-caps label */
+function StatBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1 py-5 px-6 border-r border-[#0c1425]/8 last:border-r-0">
+      <span className="font-display text-[2.75rem] leading-none text-[#0c1425] tabular-nums">
+        {value}
+      </span>
+      <span className="text-[10px] tracking-[0.22em] uppercase font-semibold text-[#0c1425]/35">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** Nav pill link */
+function NavLink({ href, label, active = false }: { href: string; label: string; active?: boolean }) {
+  return (
+    <a
+      href={href}
+      className={`inline-flex items-center h-8 px-3.5 text-[10px] tracking-[0.18em] uppercase font-semibold transition-colors rounded-sm ${
+        active
+          ? "text-[#c4a35a] border border-[#c4a35a]/40 bg-[#c4a35a]/[0.06]"
+          : "text-white/50 border border-white/[0.08] hover:text-[#c4a35a] hover:border-[#c4a35a]/25"
+      }`}
+    >
+      {label}
+    </a>
+  );
+}
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+
+function LoginScreen({
+  password,
+  setPassword,
+  onLogin,
+  authError,
+}: {
+  password: string;
+  setPassword: (v: string) => void;
+  onLogin: () => void;
+  authError: boolean;
+}) {
+  return (
+    <div className="min-h-screen bg-[#0c1425] flex items-center justify-center px-4">
+      {/* Decorative rule */}
+      <div className="max-w-sm w-full">
+        {/* Masthead */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-3 mb-6">
+            <span className="block h-px w-12 bg-[#c4a35a]/30" />
+            <span className="text-[10px] tracking-[0.35em] uppercase text-[#c4a35a]/50 font-semibold">
+              NMT Diagnostic
+            </span>
+            <span className="block h-px w-12 bg-[#c4a35a]/30" />
+          </div>
+          <h1 className="font-display text-4xl text-white leading-tight">
+            Admin Access
+          </h1>
+          <p className="mt-2 text-sm text-white/30 font-body">
+            Restricted to authorised personnel
+          </p>
+        </div>
+
+        {/* Form */}
+        <div className="space-y-3">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && onLogin()}
+            placeholder="Enter password"
+            className="w-full px-4 py-3.5 rounded-sm bg-white/[0.05] border border-white/[0.10] text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/60 text-sm tracking-wider text-center"
+            autoFocus
+          />
+          {authError && (
+            <p className="text-center text-red-400 text-xs tracking-wide">
+              Incorrect password
+            </p>
+          )}
+          <button
+            onClick={onLogin}
+            className="w-full h-12 bg-[#c4a35a] hover:bg-[#dfc088] text-[#0c1425] text-[11px] tracking-[0.25em] uppercase font-bold rounded-sm transition-colors"
+          >
+            Enter Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
@@ -136,7 +282,6 @@ export default function AdminPage() {
   const [sortField, setSortField] = useState<"created_at" | "total_score" | "percentage">("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Check session
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
     if (saved) {
@@ -206,7 +351,6 @@ export default function AdminPage() {
     setCompareIds(next);
   };
 
-  // Sort assessments
   const sorted = [...assessments].sort((a, b) => {
     const aVal = a[sortField];
     const bVal = b[sortField];
@@ -230,8 +374,6 @@ export default function AdminPage() {
 
   // Compare data
   const compareAssessments = assessments.filter((a) => compareIds.has(a.id));
-  const dimNames = ["Strategy", "Penetration", "Execution", "Regional", "Impact", "Brand", "Continuity"];
-
   const radarCompareData = dimNames.map((name, i) => {
     const point: Record<string, string | number> = { dimension: name };
     compareAssessments.forEach((a) => {
@@ -241,358 +383,403 @@ export default function AdminPage() {
     return point;
   });
 
-  // LOGIN SCREEN
+  // ─── Login Gate ────────────────────────────────────────────────────────────
+
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-navy flex items-center justify-center px-4">
-        <div className="max-w-sm w-full text-center">
-          <p className="text-[10px] tracking-[0.3em] uppercase text-gold/50 mb-4">
-            NMT Admin Dashboard
-          </p>
-          <h1 className="font-display text-3xl text-white mb-8">Enter Password</h1>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            placeholder="Admin password"
-            className="w-full px-4 py-3 rounded-lg bg-navy-light border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-gold/50 text-center tracking-wider"
-            autoFocus
-          />
-          {authError && (
-            <p className="text-red-400 text-xs mt-2">Incorrect password</p>
-          )}
-          <Button
-            onClick={handleLogin}
-            className="mt-4 w-full h-12 bg-gold hover:bg-gold-light text-navy font-semibold tracking-wider rounded-lg"
-          >
-            Access Dashboard
-          </Button>
-        </div>
-      </div>
+      <LoginScreen
+        password={password}
+        setPassword={setPassword}
+        onLogin={handleLogin}
+        authError={authError}
+      />
     );
   }
 
-  // ADMIN DASHBOARD
+  // ─── Dashboard ─────────────────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-parchment">
-      {/* Header */}
-      <div className="bg-navy px-6 py-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#fafaf8]" style={{ fontFamily: "var(--font-body, system-ui)" }}>
+
+      {/* ── Masthead / header ─────────────────────────────────────────── */}
+      <header className="bg-[#0c1425]">
+        {/* Top rule */}
+        <div className="border-b border-[#c4a35a]/20" />
+
+        {/* Identity row */}
+        <div className="max-w-7xl mx-auto px-6 pt-6 pb-3 flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] tracking-[0.3em] uppercase text-gold/50">
-              NMT Admin
+            <p className="text-[9px] tracking-[0.38em] uppercase text-[#c4a35a]/50 font-semibold mb-1.5">
+              Young Indians · NMT Diagnostic
             </p>
-            <h1 className="font-display text-2xl text-white">
+            <h1 className="font-display text-[1.85rem] leading-tight text-white tracking-tight">
               Assessment Dashboard
             </h1>
           </div>
-          <div className="flex gap-3">
-            <Button
+
+          {/* Export + nav cluster */}
+          <div className="flex items-center gap-2 flex-wrap justify-end pb-1">
+            <button
               onClick={handleExportCSV}
-              variant="outline"
-              className="h-9 px-4 rounded-lg border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase"
+              className="inline-flex items-center h-8 px-4 text-[10px] tracking-[0.18em] uppercase font-bold rounded-sm border border-[#c4a35a]/50 text-[#c4a35a] hover:bg-[#c4a35a]/10 transition-colors"
             >
               Export CSV
-            </Button>
-            <a
-              href="/admin/live"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Live View
-            </a>
-            <a
-              href="/admin/commitments"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Commitments
-            </a>
-            <a
-              href="/admin/manage"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Manage
-            </a>
-            <a
-              href="/admin/facilitator"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Facilitator
-            </a>
-            <a
-              href="/admin/summary"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Summary
-            </a>
-            <a
-              href="/admin/tracker"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Tracker
-            </a>
-            <a
-              href="/"
-              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
-            >
-              Back to Test
-            </a>
+            </button>
+            <NavLink href="/admin/live" label="Live View" />
+            <NavLink href="/admin/commitments" label="Commitments" />
+            <NavLink href="/admin/manage" label="Manage" />
+            <NavLink href="/admin/facilitator" label="Facilitator" />
+            <NavLink href="/admin/summary" label="Summary" />
+            <NavLink href="/admin/tracker" label="Tracker" />
+            <NavLink href="/" label="← Test" />
+          </div>
+        </div>
+
+        {/* Bottom double rule */}
+        <div className="border-b border-white/[0.06]" />
+        <div className="border-b border-[#c4a35a]/20 mt-[1px]" />
+      </header>
+
+      {/* ── Stat band ─────────────────────────────────────────────────── */}
+      <div className="border-b border-[#0c1425]/8 bg-white">
+        <div className="max-w-7xl mx-auto px-2">
+          {/* Mobile: 2-col grid; Desktop: single row flex */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-row divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-[#0c1425]/8">
+            <StatBlock label="Total Assessments" value={totalCount.toString()} />
+            <StatBlock label="Avg Maturity Level" value={avgMaturity.toString()} />
+            <StatBlock label="Avg Score" value={`${avgScore}%`} />
+            <StatBlock label="This Month" value={thisMonth.toString()} />
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: "Total Assessments", value: totalCount.toString() },
-            { label: "Avg Maturity Level", value: avgMaturity },
-            { label: "Avg Score", value: `${avgScore}%` },
-            { label: "This Month", value: thisMonth.toString() },
-          ].map((card) => (
-            <Card key={card.label} className="border border-navy/5 shadow-none bg-white">
-              <CardContent className="p-4">
-                <p className="text-[10px] tracking-[0.15em] uppercase text-navy/30 font-semibold">
-                  {card.label}
-                </p>
-                <p className="font-display text-3xl text-navy mt-1">{card.value}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {/* ── Main content ─────────────────────────────────────────────── */}
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
 
-        {/* Compare View */}
+        {/* ── Compare panel ──────────────────────────────────────────── */}
         {compareMode && compareAssessments.length >= 2 && (
-          <Card className="border border-gold/20 shadow-none bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl text-navy">
-                  Compare ({compareAssessments.length} selected)
-                </h2>
-                <Button
-                  onClick={() => { setCompareMode(false); setCompareIds(new Set()); }}
-                  variant="outline"
-                  className="h-8 text-xs border-navy/10"
-                >
-                  Close Compare
-                </Button>
-              </div>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarCompareData}>
-                    <PolarGrid stroke="#e8e5df" />
-                    <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fill: "#6b6b6b" }} />
-                    <PolarRadiusAxis angle={90} domain={[0, 25]} tick={{ fontSize: 9, fill: "#a8a8a8" }} tickCount={6} />
-                    {compareAssessments.map((a, i) => {
-                      const label = `${a.vertical_name}${a.region ? ` (${a.region})` : ""}`;
-                      return (
-                        <Radar
-                          key={a.id}
-                          name={label}
-                          dataKey={label}
-                          stroke={compareColors[i % compareColors.length]}
-                          fill={compareColors[i % compareColors.length]}
-                          fillOpacity={0.08}
-                          strokeWidth={2}
-                        />
-                      );
-                    })}
-                    <Legend />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="bg-white border border-[#0c1425]/8 rounded-sm">
+            {/* Panel header */}
+            <div className="flex items-baseline justify-between px-6 pt-5 pb-3 border-b border-[#0c1425]/8">
+              <h2 className="font-display text-xl text-[#0c1425]">
+                Comparing {compareAssessments.length} assessments
+              </h2>
+              <button
+                onClick={() => { setCompareMode(false); setCompareIds(new Set()); }}
+                className="text-[10px] tracking-[0.18em] uppercase font-semibold text-[#0c1425]/40 hover:text-[#0c1425] transition-colors"
+              >
+                Close ×
+              </button>
+            </div>
+            <div className="p-6 h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={radarCompareData}>
+                  <PolarGrid stroke="#e8e5df" />
+                  <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 11, fill: "#6b6b6b", fontFamily: "inherit" }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 25]} tick={{ fontSize: 9, fill: "#a8a8a8" }} tickCount={6} />
+                  {compareAssessments.map((a, i) => {
+                    const label = `${a.vertical_name}${a.region ? ` (${a.region})` : ""}`;
+                    return (
+                      <Radar
+                        key={a.id}
+                        name={label}
+                        dataKey={label}
+                        stroke={compareColors[i % compareColors.length]}
+                        fill={compareColors[i % compareColors.length]}
+                        fillOpacity={0.07}
+                        strokeWidth={1.5}
+                      />
+                    );
+                  })}
+                  <Legend
+                    wrapperStyle={{ fontSize: "11px", fontFamily: "inherit", paddingTop: "8px" }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         )}
 
-        {/* Filters + Compare toggle */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Select value={filterVertical} onValueChange={(v) => v && setFilterVertical(v)}>
-            <SelectTrigger className="w-44 h-9 bg-white border-navy/10 text-sm">
-              <SelectValue placeholder="All Verticals" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Verticals</SelectItem>
-              {verticals.map((v) => (
-                <SelectItem key={v.name} value={v.name}>{v.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* ── Filter bar ─────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Vertical filter */}
+          <select
+            value={filterVertical}
+            onChange={(e) => setFilterVertical(e.target.value)}
+            className="h-8 px-3 pr-7 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230c142540'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 10px center",
+            }}
+          >
+            <option value="all">All Verticals</option>
+            {verticals.map((v) => (
+              <option key={v.name} value={v.name}>{v.name}</option>
+            ))}
+          </select>
 
-          <Select value={filterRegion} onValueChange={(v) => v && setFilterRegion(v)}>
-            <SelectTrigger className="w-40 h-9 bg-white border-navy/10 text-sm">
-              <SelectValue placeholder="All Regions" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Regions</SelectItem>
-              <SelectItem value="National">National</SelectItem>
-              {regions.map((r) => (
-                <SelectItem key={r.code} value={r.code}>{r.code}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Region filter */}
+          <select
+            value={filterRegion}
+            onChange={(e) => setFilterRegion(e.target.value)}
+            className="h-8 px-3 pr-7 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230c142540'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 10px center",
+            }}
+          >
+            <option value="all">All Regions</option>
+            <option value="National">National</option>
+            {regions.map((r) => (
+              <option key={r.code} value={r.code}>{r.code}</option>
+            ))}
+          </select>
 
-          <Select value={filterMaturity} onValueChange={(v) => v && setFilterMaturity(v)}>
-            <SelectTrigger className="w-36 h-9 bg-white border-navy/10 text-sm">
-              <SelectValue placeholder="All Levels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {[1, 2, 3, 4, 5].map((l) => (
-                <SelectItem key={l} value={l.toString()}>L{l} — {maturityLabels[l]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Maturity filter */}
+          <select
+            value={filterMaturity}
+            onChange={(e) => setFilterMaturity(e.target.value)}
+            className="h-8 px-3 pr-7 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%230c142540'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 10px center",
+            }}
+          >
+            <option value="all">All Levels</option>
+            {[1, 2, 3, 4, 5].map((l) => (
+              <option key={l} value={l.toString()}>L{l} — {maturityLabels[l]}</option>
+            ))}
+          </select>
 
           <input
             type="date"
             value={filterDateFrom}
             onChange={(e) => setFilterDateFrom(e.target.value)}
-            className="h-9 px-3 rounded-lg border border-navy/10 bg-white text-sm text-navy/70"
-            placeholder="From"
+            className="h-8 px-3 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50"
+            title="From date"
           />
           <input
             type="date"
             value={filterDateTo}
             onChange={(e) => setFilterDateTo(e.target.value)}
-            className="h-9 px-3 rounded-lg border border-navy/10 bg-white text-sm text-navy/70"
-            placeholder="To"
+            className="h-8 px-3 rounded-sm border border-[#0c1425]/12 bg-white text-xs text-[#0c1425]/70 focus:outline-none focus:ring-1 focus:ring-[#c4a35a]/50"
+            title="To date"
           />
 
           <div className="flex-1" />
 
-          <Button
+          {/* Result count */}
+          <span className="text-[10px] tracking-[0.15em] uppercase text-[#0c1425]/30 font-semibold">
+            {sorted.length} record{sorted.length !== 1 ? "s" : ""}
+          </span>
+
+          {/* Compare toggle */}
+          <button
             onClick={() => setCompareMode(!compareMode)}
-            variant={compareMode ? "default" : "outline"}
-            className={`h-9 text-xs tracking-wider uppercase ${compareMode ? "bg-gold text-navy" : "border-navy/10"}`}
+            className={`h-8 px-4 rounded-sm text-[10px] tracking-[0.18em] uppercase font-bold transition-colors ${
+              compareMode
+                ? "bg-[#c4a35a] text-[#0c1425]"
+                : "border border-[#0c1425]/15 text-[#0c1425]/50 hover:border-[#0c1425]/30 hover:text-[#0c1425]/70"
+            }`}
           >
             {compareMode ? `Compare (${compareIds.size})` : "Compare Mode"}
-          </Button>
-
-          <span className="text-xs text-navy/30">
-            {sorted.length} result{sorted.length !== 1 ? "s" : ""}
-          </span>
+          </button>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-lg border border-navy/5 overflow-hidden">
+        {/* ── Assessments table ──────────────────────────────────────── */}
+        <div className="bg-white border border-[#0c1425]/8 rounded-sm overflow-hidden">
+
+          {/* Table heading bar */}
+          <div className="border-b border-[#0c1425]/8 px-6 py-3.5 flex items-baseline justify-between">
+            <h2 className="font-display text-lg text-[#0c1425]">
+              Assessments
+            </h2>
+            {!loading && !fetchError && sorted.length > 0 && (
+              <span className="text-[10px] tracking-[0.15em] uppercase text-[#0c1425]/30 font-semibold">
+                Click row to open · Sort by column headers
+              </span>
+            )}
+          </div>
+
           {loading ? (
-            <div className="p-8 text-center text-navy/30 text-sm">Loading...</div>
+            <div className="py-16 text-center">
+              <span className="text-[10px] tracking-[0.22em] uppercase text-[#0c1425]/30 font-semibold">
+                Loading records…
+              </span>
+            </div>
           ) : fetchError ? (
-            <div className="p-8 text-center text-red-700 text-sm bg-red-50 border border-red-200 rounded-lg">
-              {fetchError}{" "}
-              <button onClick={fetchAssessments} className="underline text-red-800 ml-2">
+            <div className="py-12 px-6 text-center">
+              <p className="text-sm text-red-700 mb-3">{fetchError}</p>
+              <button
+                onClick={fetchAssessments}
+                className="text-[10px] tracking-[0.18em] uppercase font-semibold text-[#c4a35a] hover:underline"
+              >
                 Retry
               </button>
             </div>
           ) : sorted.length === 0 ? (
-            <div className="p-8 text-center text-navy/30 text-sm">No assessments yet</div>
+            <div className="py-16 text-center">
+              <span className="text-[10px] tracking-[0.22em] uppercase text-[#0c1425]/30 font-semibold">
+                No assessments match the current filters
+              </span>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-navy/5 bg-navy/[0.02]">
-                    {compareMode && <th className="px-3 py-3 w-10" />}
-                    <th className="px-4 py-3 text-left text-[10px] tracking-wider uppercase text-navy/40 font-semibold">
-                      Vertical
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] tracking-wider uppercase text-navy/40 font-semibold">
-                      Region
-                    </th>
-                    <th className="px-4 py-3 text-left text-[10px] tracking-wider uppercase text-navy/40 font-semibold">
-                      Respondent
-                    </th>
-                    <th
-                      className="px-4 py-3 text-right text-[10px] tracking-wider uppercase text-navy/40 font-semibold cursor-pointer hover:text-gold"
+                  <tr className="border-b border-[#0c1425]/8">
+                    {compareMode && <th className="w-10 px-4 py-3" />}
+                    <ColHeader label="Vertical" />
+                    <ColHeader label="Region" />
+                    <ColHeader label="Respondent" />
+                    <ColHeader
+                      label="Score"
+                      align="right"
+                      sortable
+                      active={sortField === "total_score"}
+                      dir={sortDir}
                       onClick={() => {
                         if (sortField === "total_score") setSortDir(sortDir === "asc" ? "desc" : "asc");
                         else { setSortField("total_score"); setSortDir("desc"); }
                       }}
-                    >
-                      Score {sortField === "total_score" && (sortDir === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-right text-[10px] tracking-wider uppercase text-navy/40 font-semibold cursor-pointer hover:text-gold"
+                    />
+                    <ColHeader
+                      label="%"
+                      align="right"
+                      sortable
+                      active={sortField === "percentage"}
+                      dir={sortDir}
                       onClick={() => {
                         if (sortField === "percentage") setSortDir(sortDir === "asc" ? "desc" : "asc");
                         else { setSortField("percentage"); setSortDir("desc"); }
                       }}
-                    >
-                      % {sortField === "percentage" && (sortDir === "desc" ? "↓" : "↑")}
-                    </th>
-                    <th className="px-4 py-3 text-center text-[10px] tracking-wider uppercase text-navy/40 font-semibold">
-                      Level
-                    </th>
-                    <th
-                      className="px-4 py-3 text-right text-[10px] tracking-wider uppercase text-navy/40 font-semibold cursor-pointer hover:text-gold"
+                    />
+                    <ColHeader label="Level" align="center" />
+                    <ColHeader
+                      label="Date"
+                      align="right"
+                      sortable
+                      active={sortField === "created_at"}
+                      dir={sortDir}
                       onClick={() => {
                         if (sortField === "created_at") setSortDir(sortDir === "asc" ? "desc" : "asc");
                         else { setSortField("created_at"); setSortDir("desc"); }
                       }}
-                    >
-                      Date {sortField === "created_at" && (sortDir === "desc" ? "↓" : "↑")}
-                    </th>
+                    />
                   </tr>
                 </thead>
-                <tbody>
-                  {sorted.map((row) => {
-                    const maturityBg: Record<number, string> = {
-                      1: "bg-red-100 text-red-800",
-                      2: "bg-orange-100 text-orange-800",
-                      3: "bg-amber-100 text-amber-800",
-                      4: "bg-blue-100 text-blue-800",
-                      5: "bg-emerald-100 text-emerald-800",
-                    };
-                    return (
-                      <tr
-                        key={row.id}
-                        className="border-b border-navy/5 hover:bg-gold/[0.03] cursor-pointer transition-colors"
-                        onClick={() => {
-                          if (compareMode) {
-                            toggleCompare(row.id);
-                          } else {
-                            window.open(`/results/${row.id}`, "_blank");
-                          }
-                        }}
-                      >
-                        {compareMode && (
-                          <td className="px-3 py-3">
-                            <input
-                              type="checkbox"
-                              checked={compareIds.has(row.id)}
-                              onChange={() => toggleCompare(row.id)}
-                              className="w-4 h-4 rounded accent-gold"
-                            />
-                          </td>
-                        )}
-                        <td className="px-4 py-3 font-medium text-navy">{row.vertical_name}</td>
-                        <td className="px-4 py-3 text-navy/50">{row.region || "—"}</td>
-                        <td className="px-4 py-3 text-navy/50">{row.respondent_name || "—"}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium text-navy">
-                          {row.total_score}<span className="text-navy/25">/175</span>
+                <tbody className="divide-y divide-[#0c1425]/[0.05]">
+                  {sorted.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      className={`cursor-pointer transition-colors hover:bg-[#c4a35a]/[0.035] group ${
+                        compareIds.has(row.id) ? "bg-[#c4a35a]/[0.05]" : idx % 2 === 0 ? "bg-white" : "bg-[#fafaf8]"
+                      }`}
+                      onClick={() => {
+                        if (compareMode) {
+                          toggleCompare(row.id);
+                        } else {
+                          window.open(`/results/${row.id}`, "_blank");
+                        }
+                      }}
+                    >
+                      {compareMode && (
+                        <td className="px-4 py-3.5 w-10">
+                          <input
+                            type="checkbox"
+                            checked={compareIds.has(row.id)}
+                            onChange={() => toggleCompare(row.id)}
+                            className="w-4 h-4 rounded-sm accent-[#c4a35a]"
+                          />
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums text-navy/60">{row.percentage}%</td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge className={`text-[10px] ${maturityBg[row.maturity_level] || ""}`}>
-                            L{row.maturity_level}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right text-navy/40 text-xs">
-                          {new Date(row.created_at).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      )}
+                      {/* Vertical — primary identifier */}
+                      <td className="px-4 py-3.5">
+                        <span className="font-semibold text-[#0c1425] group-hover:text-[#c4a35a] transition-colors">
+                          {row.vertical_name}
+                        </span>
+                      </td>
+                      {/* Region */}
+                      <td className="px-4 py-3.5 text-[#0c1425]/45 text-xs">
+                        {row.region || <span className="text-[#0c1425]/20">—</span>}
+                      </td>
+                      {/* Respondent */}
+                      <td className="px-4 py-3.5 text-[#0c1425]/45 text-xs italic">
+                        {row.respondent_name || <span className="not-italic text-[#0c1425]/20">—</span>}
+                      </td>
+                      {/* Score */}
+                      <td className="px-4 py-3.5 text-right tabular-nums font-semibold text-[#0c1425]">
+                        {row.total_score}
+                        <span className="text-[#0c1425]/20 font-normal">/175</span>
+                      </td>
+                      {/* Percentage */}
+                      <td className="px-4 py-3.5 text-right tabular-nums text-[#0c1425]/55">
+                        {row.percentage}%
+                      </td>
+                      {/* Maturity level */}
+                      <td className="px-4 py-3.5 text-center">
+                        <span className={`inline-block text-[10px] tracking-[0.12em] uppercase font-bold ${maturityTextColor[row.maturity_level] ?? "text-[#0c1425]/50"}`}>
+                          L{row.maturity_level}
+                          <span className="hidden sm:inline font-normal opacity-70 ml-1">
+                            {maturityLabels[row.maturity_level]}
+                          </span>
+                        </span>
+                      </td>
+                      {/* Date */}
+                      <td className="px-4 py-3.5 text-right text-[#0c1425]/35 text-xs tabular-nums">
+                        {new Date(row.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           )}
         </div>
-      </div>
+
+        {/* ── Mobile card view (< 640 px) ────────────────────────────── */}
+        {/* This block is shown only on mobile to replace the scrolling table */}
+        <div className="sm:hidden space-y-3 -mt-2">
+          {!loading && !fetchError && sorted.map((row) => (
+            <div
+              key={`m-${row.id}`}
+              className={`bg-white border border-[#0c1425]/8 rounded-sm px-4 py-3.5 cursor-pointer transition-colors hover:border-[#c4a35a]/40 ${
+                compareIds.has(row.id) ? "border-[#c4a35a]/40 bg-[#c4a35a]/[0.03]" : ""
+              }`}
+              onClick={() => {
+                if (compareMode) toggleCompare(row.id);
+                else window.open(`/results/${row.id}`, "_blank");
+              }}
+            >
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <p className="font-semibold text-[#0c1425] text-sm">{row.vertical_name}</p>
+                  <p className="text-[10px] text-[#0c1425]/40 mt-0.5 italic">{row.respondent_name || "—"}</p>
+                </div>
+                <span className={`text-[10px] tracking-[0.12em] uppercase font-bold mt-0.5 ${maturityTextColor[row.maturity_level] ?? ""}`}>
+                  L{row.maturity_level}
+                </span>
+              </div>
+              <Rule />
+              <div className="flex items-center gap-4 pt-2 text-xs text-[#0c1425]/50">
+                <span className="tabular-nums font-semibold text-[#0c1425]">{row.total_score}/175</span>
+                <span className="tabular-nums">{row.percentage}%</span>
+                <span className="flex-1 text-right text-[#0c1425]/35 text-[10px]">
+                  {new Date(row.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </main>
     </div>
   );
 }
