@@ -8,6 +8,8 @@ import {
   Radar,
   ResponsiveContainer,
 } from "recharts";
+import QRCode from "qrcode";
+import { downloadBlankTestPDF } from "@/components/blank-test-pdf";
 
 interface AssessmentRow {
   id: string;
@@ -49,6 +51,13 @@ export default function AdminLivePage() {
   const previousIdsRef = useRef<Set<string>>(new Set());
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
 
+  // QR code state — assessment URL as data-URL PNG, plus modal toggle + download state
+  const [qrSmallSrc, setQrSmallSrc] = useState<string>("");
+  const [qrLargeSrc, setQrLargeSrc] = useState<string>("");
+  const [assessmentUrl, setAssessmentUrl] = useState<string>("");
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [isDownloadingPaper, setIsDownloadingPaper] = useState(false);
+
   // Auth check on mount
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
@@ -59,6 +68,49 @@ export default function AdminLivePage() {
     setStoredPassword(saved);
     setAuthChecked(true);
   }, []);
+
+  // Generate QR codes for the assessment URL (small for header, large for modal)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/`;
+    setAssessmentUrl(url);
+
+    const qrOpts = {
+      margin: 2,
+      color: { dark: "#c4a35a", light: "#0c1425" },
+    };
+
+    QRCode.toDataURL(url, { ...qrOpts, width: 150 })
+      .then((dataUrl) => setQrSmallSrc(dataUrl))
+      .catch((err) => console.error("QR (small) generation failed", err));
+
+    QRCode.toDataURL(url, { ...qrOpts, width: 400 })
+      .then((dataUrl) => setQrLargeSrc(dataUrl))
+      .catch((err) => console.error("QR (large) generation failed", err));
+  }, []);
+
+  // Close modal on Escape
+  useEffect(() => {
+    if (!showQrModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowQrModal(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showQrModal]);
+
+  const handleDownloadPaperTest = async () => {
+    if (isDownloadingPaper) return;
+    setIsDownloadingPaper(true);
+    try {
+      await downloadBlankTestPDF();
+    } catch (err) {
+      console.error("Blank test PDF download failed", err);
+      alert("Could not generate the paper test PDF. Please try again.");
+    } finally {
+      setIsDownloadingPaper(false);
+    }
+  };
 
   // Fetch assessments
   const fetchAssessments = useCallback(async () => {
@@ -220,6 +272,24 @@ export default function AdminLivePage() {
               </span>
             </div>
 
+            {/* QR code — small button, click to expand */}
+            {qrSmallSrc && (
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                title="Scan to open the assessment on your phone"
+                aria-label="Show assessment QR code"
+                className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-navy hover:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/50 transition-colors"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrSmallSrc}
+                  alt="Assessment QR code"
+                  className="w-full h-full object-contain"
+                />
+              </button>
+            )}
+
             {/* Exit */}
             <a
               href="/admin"
@@ -353,6 +423,82 @@ export default function AdminLivePage() {
           </div>
         )}
       </div>
+
+      {/* QR Code Modal */}
+      {showQrModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4 py-8"
+          onClick={() => setShowQrModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Assessment QR code"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-8 relative"
+          >
+            <button
+              type="button"
+              onClick={() => setShowQrModal(false)}
+              aria-label="Close QR code modal"
+              className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center text-navy/40 hover:text-navy hover:bg-navy/5 transition-colors text-xl leading-none"
+            >
+              ×
+            </button>
+
+            <p className="text-[10px] tracking-[0.3em] uppercase text-gold/80 mb-2 text-center">
+              Share Assessment
+            </p>
+            <h2 className="font-display text-2xl text-navy text-center mb-6">
+              Scan to take the diagnostic
+            </h2>
+
+            <div className="flex items-center justify-center mb-5">
+              {qrLargeSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={qrLargeSrc}
+                  alt="Assessment QR code (large)"
+                  className="w-[320px] h-[320px] rounded-lg border border-navy/10"
+                />
+              ) : (
+                <div className="w-[320px] h-[320px] rounded-lg border border-navy/10 flex items-center justify-center text-navy/40 text-sm">
+                  Generating QR code...
+                </div>
+              )}
+            </div>
+
+            <div className="mb-5">
+              <p className="text-[10px] tracking-[0.2em] uppercase text-navy/40 mb-1">
+                Assessment URL
+              </p>
+              <input
+                type="text"
+                readOnly
+                value={assessmentUrl}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                className="w-full text-sm font-mono text-navy bg-navy/5 border border-navy/10 rounded-lg px-3 py-2 focus:outline-none focus:border-gold/50"
+              />
+            </div>
+
+            <p className="text-sm text-navy/60 text-center mb-5 leading-relaxed">
+              Share this QR code with NMT members so they can take the test on
+              their phones.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleDownloadPaperTest}
+              disabled={isDownloadingPaper}
+              className="w-full h-11 rounded-lg bg-navy text-white text-xs tracking-[0.15em] uppercase font-semibold hover:bg-navy/90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isDownloadingPaper
+                ? "Preparing PDF..."
+                : "Download blank test PDF"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

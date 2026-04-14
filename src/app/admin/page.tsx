@@ -314,6 +314,24 @@ export default function AdminPage() {
               Manage
             </a>
             <a
+              href="/admin/facilitator"
+              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
+            >
+              Facilitator
+            </a>
+            <a
+              href="/admin/summary"
+              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
+            >
+              Summary
+            </a>
+            <a
+              href="/admin/tracker"
+              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
+            >
+              Tracker
+            </a>
+            <a
               href="/"
               className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
             >
