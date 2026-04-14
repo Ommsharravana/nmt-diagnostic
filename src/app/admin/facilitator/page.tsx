@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 // ---------- Run-sheet data ----------
 interface RunStep {
@@ -353,15 +353,17 @@ function ArcTimer({
 
 // ---------- Page ----------
 export default function FacilitatorPage() {
-  const [authChecked, setAuthChecked] = useState(false);
+  const [authChecked] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("nmt-admin-pw") != null
+      : false
+  );
 
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
     if (!saved) {
       window.location.href = "/admin";
-      return;
     }
-    setAuthChecked(true);
   }, []);
 
   // Active section tab
@@ -386,9 +388,9 @@ export default function FacilitatorPage() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [stepStartTime, setStepStartTime] = useState<number | null>(null);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
-  const [now, setNow] = useState<number>(Date.now());
-  const pausedElapsedRef = useRef<number>(0);
-  const pausedSessionElapsedRef = useRef<number>(0);
+  const [now, setNow] = useState<number>(() => Date.now());
+  const [pausedElapsed, setPausedElapsed] = useState<number>(0);
+  const [pausedSessionElapsed, setPausedSessionElapsed] = useState<number>(0);
 
   useEffect(() => {
     if (!sessionStarted || isPaused) return;
@@ -401,7 +403,7 @@ export default function FacilitatorPage() {
 
   const stepElapsedSec = sessionStarted
     ? isPaused
-      ? Math.floor(pausedElapsedRef.current / 1000)
+      ? Math.floor(pausedElapsed / 1000)
       : stepStartTime != null
       ? Math.floor((now - stepStartTime) / 1000)
       : 0
@@ -413,7 +415,7 @@ export default function FacilitatorPage() {
 
   const sessionElapsedSec = sessionStarted
     ? isPaused
-      ? Math.floor(pausedSessionElapsedRef.current / 1000)
+      ? Math.floor(pausedSessionElapsed / 1000)
       : sessionStartTime != null
       ? Math.floor((now - sessionStartTime) / 1000)
       : 0
@@ -426,8 +428,8 @@ export default function FacilitatorPage() {
     setCurrentStepIndex(0);
     setStepStartTime(t);
     setSessionStartTime(t);
-    pausedElapsedRef.current = 0;
-    pausedSessionElapsedRef.current = 0;
+    setPausedElapsed(0);
+    setPausedSessionElapsed(0);
     setActiveSection("runsheet");
   };
 
@@ -436,24 +438,24 @@ export default function FacilitatorPage() {
     const t = Date.now();
     setCurrentStepIndex((i) => i + 1);
     setStepStartTime(t);
-    pausedElapsedRef.current = 0;
+    setPausedElapsed(0);
     if (isPaused) setIsPaused(false);
   };
 
   const pauseSession = () => {
     if (!sessionStarted || isPaused) return;
     if (stepStartTime != null)
-      pausedElapsedRef.current = Date.now() - stepStartTime;
+      setPausedElapsed(Date.now() - stepStartTime);
     if (sessionStartTime != null)
-      pausedSessionElapsedRef.current = Date.now() - sessionStartTime;
+      setPausedSessionElapsed(Date.now() - sessionStartTime);
     setIsPaused(true);
   };
 
   const resumeSession = () => {
     if (!sessionStarted || !isPaused) return;
     const t = Date.now();
-    setStepStartTime(t - pausedElapsedRef.current);
-    setSessionStartTime(t - pausedSessionElapsedRef.current);
+    setStepStartTime(t - pausedElapsed);
+    setSessionStartTime(t - pausedSessionElapsed);
     setIsPaused(false);
   };
 
@@ -463,8 +465,8 @@ export default function FacilitatorPage() {
     setCurrentStepIndex(0);
     setStepStartTime(null);
     setSessionStartTime(null);
-    pausedElapsedRef.current = 0;
-    pausedSessionElapsedRef.current = 0;
+    setPausedElapsed(0);
+    setPausedSessionElapsed(0);
   };
 
   // Talking-point accordion — default open to match current step

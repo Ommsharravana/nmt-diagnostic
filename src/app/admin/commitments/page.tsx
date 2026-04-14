@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, startTransition } from "react";
 import { verticals } from "@/lib/yi-data";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -584,13 +584,24 @@ function CommitmentCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CommitmentsPage() {
-  const [storedPassword, setStoredPassword] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
+  const [storedPassword] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return sessionStorage.getItem("nmt-admin-pw") ?? "";
+  });
+  const [authenticated] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(sessionStorage.getItem("nmt-admin-pw"));
+  });
 
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [filterVertical, setFilterVertical] = useState("all");
+  const [filterVertical, setFilterVertical] = useState(() => {
+    if (typeof window === "undefined") return "all";
+    const sp = new URLSearchParams(window.location.search);
+    const v = sp.get("vertical");
+    return v && v.trim().length > 0 ? v : "all";
+  });
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterMeeting, setFilterMeeting] = useState("");
 
@@ -606,26 +617,16 @@ export default function CommitmentsPage() {
 
   const [obsOpen, setObsOpen] = useState<Record<string, boolean>>({});
 
-  // Auth check + ?vertical= query param
+  // Auth check — redirect if not logged in
   useEffect(() => {
-    const saved = sessionStorage.getItem("nmt-admin-pw");
-    if (!saved) {
+    if (!storedPassword) {
       window.location.href = "/admin";
-      return;
     }
-    setStoredPassword(saved);
-    setAuthenticated(true);
-
-    if (typeof window !== "undefined") {
-      const sp = new URLSearchParams(window.location.search);
-      const v = sp.get("vertical");
-      if (v && v.trim().length > 0) setFilterVertical(v);
-    }
-  }, []);
+  }, [storedPassword]);
 
   const fetchCommitments = useCallback(async () => {
     if (!storedPassword) return;
-    setLoading(true);
+    startTransition(() => setLoading(true));
     const params = new URLSearchParams();
     if (filterVertical !== "all") params.set("vertical", filterVertical);
     if (filterStatus !== "all") params.set("status", filterStatus);
@@ -637,20 +638,22 @@ export default function CommitmentsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCommitments(Array.isArray(data) ? data : data.commitments || []);
+        startTransition(() => {
+          setCommitments(Array.isArray(data) ? data : data.commitments || []);
+        });
       }
     } catch (e) {
       console.error("Failed to fetch commitments:", e);
     }
-    setLoading(false);
+    startTransition(() => setLoading(false));
   }, [storedPassword, filterVertical, filterStatus, filterMeeting]);
 
   useEffect(() => {
     if (authenticated) fetchCommitments();
   }, [authenticated, fetchCommitments]);
 
-  // Sync edit state when commitments load
-  useEffect(() => {
+  // Sync edit state when commitments load — derived from commitments
+  const { initialEdits, initialItemEdits } = useMemo(() => {
     const next: Record<string, { status: StatusType; completion_notes: string }> = {};
     const nextItems: Record<string, { status: StatusType; notes: string }> = {};
     commitments.forEach((c) => {
@@ -664,9 +667,15 @@ export default function CommitmentsPage() {
         });
       }
     });
-    setEdits(next);
-    setItemEdits(nextItems);
+    return { initialEdits: next, initialItemEdits: nextItems };
   }, [commitments]);
+
+  useEffect(() => {
+    startTransition(() => {
+      setEdits(initialEdits);
+      setItemEdits(initialItemEdits);
+    });
+  }, [initialEdits, initialItemEdits]);
 
   const updateEdit = (id: string, patch: Partial<{ status: StatusType; completion_notes: string }>) => {
     setEdits((prev) => ({

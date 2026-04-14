@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 
 interface PriorCommitmentsCheckProps {
   verticalName: string;
@@ -140,12 +140,19 @@ export default function PriorCommitmentsCheck({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
+    queueMicrotask(() => {
+      if (cancelled) return;
+      startTransition(() => {
+        setLoading(true);
+        setLoadError(null);
+      });
+    });
     fetchPendingCommitments(verticalName).then((result) => {
       if (cancelled) return;
       if (result.error) {
-        setLoadError(result.error);
+        startTransition(() => {
+          setLoadError(result.error!);
+        });
         onAllReviewed();
         return;
       }
@@ -154,8 +161,10 @@ export default function PriorCommitmentsCheck({
         onAllReviewed();
         return;
       }
-      setCommitments(data);
-      setLoading(false);
+      startTransition(() => {
+        setCommitments(data);
+        setLoading(false);
+      });
     });
     return () => {
       cancelled = true;

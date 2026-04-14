@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Select,
@@ -460,8 +460,16 @@ function AddTray({
 
 export default function AdminManagePage() {
   const router = useRouter();
-  const [storedPassword, setStoredPassword] = useState<string>("");
-  const [authChecked, setAuthChecked] = useState(false);
+  const [storedPassword] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("nmt-admin-pw") ?? ""
+      : ""
+  );
+  const [authChecked] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("nmt-admin-pw") != null
+      : false
+  );
   const [activeTab, setActiveTab] = useState<TabKey>("verticals");
 
   const [verticals, setVerticals] = useState<VerticalRow[]>([]);
@@ -480,12 +488,10 @@ export default function AdminManagePage() {
     assessments: null, commitments: null, settings: null,
   });
 
-  /* Auth gate */
+  /* Auth gate — redirect only; state is hydrated via lazy initializers */
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
     if (!saved) { router.replace("/admin"); return; }
-    setStoredPassword(saved);
-    setAuthChecked(true);
   }, [router]);
 
   const setTabLoading = (tab: TabKey, value: boolean) =>
@@ -494,61 +500,73 @@ export default function AdminManagePage() {
     setErrors((prev) => ({ ...prev, [tab]: value }));
 
   const loadVerticals = useCallback(async () => {
-    setTabLoading("verticals", true); setTabError("verticals", null);
+    startTransition(() => { setTabLoading("verticals", true); setTabError("verticals", null); });
     const r = await fetchEntities<VerticalRow>("/api/admin/verticals", storedPassword);
-    if (r.error) setTabError("verticals", r.error);
-    else if (r.data) setVerticals(r.data);
-    setTabLoading("verticals", false);
+    startTransition(() => {
+      if (r.error) setTabError("verticals", r.error);
+      else if (r.data) setVerticals(r.data);
+      setTabLoading("verticals", false);
+    });
   }, [storedPassword]);
 
   const loadRegions = useCallback(async () => {
-    setTabLoading("regions", true); setTabError("regions", null);
+    startTransition(() => { setTabLoading("regions", true); setTabError("regions", null); });
     const r = await fetchEntities<RegionRow>("/api/admin/regions", storedPassword);
-    if (r.error) setTabError("regions", r.error);
-    else if (r.data) setRegions(r.data);
-    setTabLoading("regions", false);
+    startTransition(() => {
+      if (r.error) setTabError("regions", r.error);
+      else if (r.data) setRegions(r.data);
+      setTabLoading("regions", false);
+    });
   }, [storedPassword]);
 
   const loadDimensions = useCallback(async () => {
-    setTabLoading("dimensions", true); setTabError("dimensions", null);
+    startTransition(() => { setTabLoading("dimensions", true); setTabError("dimensions", null); });
     const r = await fetchEntities<DimensionRow>("/api/admin/dimensions", storedPassword);
-    if (r.error) setTabError("dimensions", r.error);
-    else if (r.data) setDimensions(r.data);
-    setTabLoading("dimensions", false);
+    startTransition(() => {
+      if (r.error) setTabError("dimensions", r.error);
+      else if (r.data) setDimensions(r.data);
+      setTabLoading("dimensions", false);
+    });
   }, [storedPassword]);
 
   const loadQuestions = useCallback(async () => {
-    setTabLoading("questions", true); setTabError("questions", null);
+    startTransition(() => { setTabLoading("questions", true); setTabError("questions", null); });
     const r = await fetchEntities<QuestionRow>("/api/admin/questions", storedPassword);
-    if (r.error) setTabError("questions", r.error);
-    else if (r.data) setQuestions(r.data);
-    setTabLoading("questions", false);
+    startTransition(() => {
+      if (r.error) setTabError("questions", r.error);
+      else if (r.data) setQuestions(r.data);
+      setTabLoading("questions", false);
+    });
   }, [storedPassword]);
 
   const loadAssessments = useCallback(async () => {
-    setTabLoading("assessments", true); setTabError("assessments", null);
+    startTransition(() => { setTabLoading("assessments", true); setTabError("assessments", null); });
     const r = await fetchEntities<AssessmentRow>("/api/assessments", storedPassword);
-    if (r.error) setTabError("assessments", r.error);
-    else if (r.data) setAssessments(r.data);
-    setTabLoading("assessments", false);
+    startTransition(() => {
+      if (r.error) setTabError("assessments", r.error);
+      else if (r.data) setAssessments(r.data);
+      setTabLoading("assessments", false);
+    });
   }, [storedPassword]);
 
   const loadCommitments = useCallback(async () => {
-    setTabLoading("commitments", true); setTabError("commitments", null);
+    startTransition(() => { setTabLoading("commitments", true); setTabError("commitments", null); });
     const r = await fetchEntities<CommitmentRow>("/api/commitments", storedPassword);
-    if (r.error) setTabError("commitments", r.error);
-    else if (r.data) setCommitments(r.data);
-    setTabLoading("commitments", false);
+    startTransition(() => {
+      if (r.error) setTabError("commitments", r.error);
+      else if (r.data) setCommitments(r.data);
+      setTabLoading("commitments", false);
+    });
   }, [storedPassword]);
 
   useEffect(() => {
     if (!authChecked || !storedPassword) return;
-    if (activeTab === "verticals") loadVerticals();
-    else if (activeTab === "regions") loadRegions();
-    else if (activeTab === "dimensions") loadDimensions();
-    else if (activeTab === "questions") loadQuestions();
-    else if (activeTab === "assessments") loadAssessments();
-    else if (activeTab === "commitments") loadCommitments();
+    if (activeTab === "verticals") void loadVerticals();
+    else if (activeTab === "regions") void loadRegions();
+    else if (activeTab === "dimensions") void loadDimensions();
+    else if (activeTab === "questions") void loadQuestions();
+    else if (activeTab === "assessments") void loadAssessments();
+    else if (activeTab === "commitments") void loadCommitments();
   }, [activeTab, authChecked, storedPassword, loadVerticals, loadRegions, loadDimensions, loadQuestions, loadAssessments, loadCommitments]);
 
   const counts = useMemo<Record<TabKey, number | null>>(
@@ -1467,18 +1485,12 @@ function CommitmentsPanel({ rows, loading, error, pw, refetch }: {
  * ==========================================================================*/
 
 function SettingsPanel() {
-  const [name, setName] = useState<string>(DEFAULT_NEXT_MEETING.name);
-  const [date, setDate] = useState<string>(DEFAULT_NEXT_MEETING.date);
-  const [savedName, setSavedName] = useState<string>(DEFAULT_NEXT_MEETING.name);
-  const [savedDate, setSavedDate] = useState<string>(DEFAULT_NEXT_MEETING.date);
+  const [name, setName] = useState<string>(() => getNextMeeting().name);
+  const [date, setDate] = useState<string>(() => getNextMeeting().date);
+  const [savedName, setSavedName] = useState<string>(() => getNextMeeting().name);
+  const [savedDate, setSavedDate] = useState<string>(() => getNextMeeting().date);
   const [saveLabel, setSaveLabel] = useState<"Save" | "Saved!">("Save");
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const current = getNextMeeting();
-    setName(current.name); setDate(current.date);
-    setSavedName(current.name); setSavedDate(current.date);
-  }, []);
 
   const trimmedName = name.trim();
   const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date);

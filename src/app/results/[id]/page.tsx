@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import ResultsDashboard from "@/components/results-dashboard";
 import { OverallResult } from "@/lib/types";
 
@@ -35,9 +36,11 @@ export default function SharedResultsPage() {
 
   useEffect(() => {
     loadAssessment(id).then((result) => {
-      if (result.error) setError(result.error);
-      else if (result.data) setResults(result.data);
-      setLoading(false);
+      startTransition(() => {
+        if (result.error) setError(result.error);
+        else if (result.data) setResults(result.data);
+        setLoading(false);
+      });
     });
   }, [id]);
 
@@ -60,12 +63,12 @@ export default function SharedResultsPage() {
           <p className="text-navy/40 text-sm mt-2">
             This assessment link may have expired or the ID is incorrect.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-block mt-6 px-6 py-3 bg-navy text-white rounded-lg text-sm tracking-wider uppercase hover:bg-navy-light transition-colors"
           >
             Take New Assessment
-          </a>
+          </Link>
         </div>
       </div>
     );

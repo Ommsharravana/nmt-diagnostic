@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, startTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -237,8 +237,14 @@ function HairRule() {
 
 // ---------- Page ----------
 export default function TrackerPage() {
-  const [storedPassword, setStoredPassword] = useState("");
-  const [authChecked, setAuthChecked] = useState(false);
+  const [storedPassword] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return sessionStorage.getItem("nmt-admin-pw") ?? "";
+  });
+  const [authChecked] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(sessionStorage.getItem("nmt-admin-pw"));
+  });
 
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [commitments, setCommitments] = useState<CommitmentRow[]>([]);
@@ -253,30 +259,30 @@ export default function TrackerPage() {
   const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const saved = sessionStorage.getItem("nmt-admin-pw");
-    if (!saved) {
+    if (!storedPassword) {
       window.location.href = "/admin";
-      return;
     }
-    setStoredPassword(saved);
-    setAuthChecked(true);
-  }, []);
+  }, [storedPassword]);
 
   const fetchAll = useCallback(async () => {
     if (!storedPassword) return;
-    setLoading(true);
-    setError(null);
+    startTransition(() => {
+      setLoading(true);
+      setError(null);
+    });
     const [a, c] = await Promise.all([
       listAssessments(storedPassword),
       listCommitments(storedPassword),
     ]);
-    if (a.error) {
-      setError(a.error);
-    } else if (a.data) {
-      setAssessments(a.data);
-    }
-    if (c.data) setCommitments(c.data);
-    setLoading(false);
+    startTransition(() => {
+      if (a.error) {
+        setError(a.error);
+      } else if (a.data) {
+        setAssessments(a.data);
+      }
+      if (c.data) setCommitments(c.data);
+      setLoading(false);
+    });
   }, [storedPassword]);
 
   useEffect(() => {

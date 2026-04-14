@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, startTransition } from "react";
 import { verticals, regions } from "@/lib/yi-data";
 import {
   RadarChart,
@@ -258,9 +258,15 @@ function LoginScreen({
 
 export default function AdminPage() {
   const [password, setPassword] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
+  const [storedPassword, setStoredPassword] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return sessionStorage.getItem("nmt-admin-pw") ?? "";
+  });
+  const [authenticated, setAuthenticated] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(sessionStorage.getItem("nmt-admin-pw"));
+  });
   const [authError, setAuthError] = useState(false);
-  const [storedPassword, setStoredPassword] = useState("");
 
   // Data
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
@@ -282,14 +288,6 @@ export default function AdminPage() {
   const [sortField, setSortField] = useState<"created_at" | "total_score" | "percentage">("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  useEffect(() => {
-    const saved = sessionStorage.getItem("nmt-admin-pw");
-    if (saved) {
-      setStoredPassword(saved);
-      setAuthenticated(true);
-    }
-  }, []);
-
   const handleLogin = async () => {
     setAuthError(false);
     const result = await authenticate(password);
@@ -304,8 +302,10 @@ export default function AdminPage() {
   };
 
   const fetchAssessments = useCallback(async () => {
-    setLoading(true);
-    setFetchError(null);
+    startTransition(() => {
+      setLoading(true);
+      setFetchError(null);
+    });
     const params = new URLSearchParams();
     if (filterVertical !== "all") params.set("vertical", filterVertical);
     if (filterRegion !== "all") params.set("region", filterRegion);
@@ -314,9 +314,11 @@ export default function AdminPage() {
     if (filterDateTo) params.set("date_to", filterDateTo);
 
     const result = await listAssessments(params, storedPassword);
-    if (result.error) setFetchError(result.error);
-    else if (result.data) setAssessments(result.data);
-    setLoading(false);
+    startTransition(() => {
+      if (result.error) setFetchError(result.error);
+      else if (result.data) setAssessments(result.data);
+      setLoading(false);
+    });
   }, [storedPassword, filterVertical, filterRegion, filterMaturity, filterDateFrom, filterDateTo]);
 
   useEffect(() => {

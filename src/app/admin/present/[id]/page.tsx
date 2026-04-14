@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, startTransition } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 // ---------------------------------------------------------------------------
@@ -91,31 +91,34 @@ export default function PresentCommitmentPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const [authChecked, setAuthChecked] = useState(false);
+  const [authChecked] = useState<boolean>(() =>
+    typeof window !== "undefined"
+      ? sessionStorage.getItem("nmt-admin-pw") != null
+      : false
+  );
   const [commitment, setCommitment] = useState<Commitment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth gate
+  // Auth gate — redirect only; authChecked is hydrated via lazy initializer
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
     if (!saved) {
       window.location.href = "/admin";
-      return;
     }
-    setAuthChecked(true);
   }, []);
 
   // Load commitment
   useEffect(() => {
     if (!authChecked || !id) return;
     let cancelled = false;
-    setLoading(true);
     loadCommitment(id).then((result) => {
       if (cancelled) return;
-      if (result.error) setError(result.error);
-      else if (result.data) setCommitment(result.data);
-      setLoading(false);
+      startTransition(() => {
+        if (result.error) setError(result.error);
+        else if (result.data) setCommitment(result.data);
+        setLoading(false);
+      });
     });
     return () => {
       cancelled = true;

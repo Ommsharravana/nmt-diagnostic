@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { getNextMeeting, DEFAULT_NEXT_MEETING } from "@/lib/next-meeting";
 
 interface DimensionEntry {
@@ -117,8 +117,14 @@ export default function CommitmentCapture({
   }, [dimensions, weakestDimensionName]);
 
   const initialTargetLevel = Math.min(5, Math.max(currentLevel + 1, 2));
-  const defaultDeadline = DEFAULT_NEXT_MEETING.date;
   const todayYmd = useMemo(() => addDays(new Date(), 0), []);
+
+  // Resolve next meeting once (pure function) — used to seed initial state.
+  const initialNextMeeting = useMemo(
+    () => (typeof window !== "undefined" ? getNextMeeting() : DEFAULT_NEXT_MEETING),
+    [],
+  );
+  const initialDeadline = initialNextMeeting.date;
 
   // --- State ---
   const [chairValue, setChairValue] = useState<string>(chairName ?? "");
@@ -127,26 +133,16 @@ export default function CommitmentCapture({
   const [focusDimension, setFocusDimension] = useState<string>(defaultDimension);
   const [targetLevel, setTargetLevel] = useState<number>(initialTargetLevel);
   const [focusReason, setFocusReason] = useState<string>("");
-  const [actionRows, setActionRows] = useState<[ActionRow, ActionRow, ActionRow]>([
-    { text: "", owner: "", deadline: defaultDeadline },
-    { text: "", owner: "", deadline: defaultDeadline },
-    { text: "", owner: "", deadline: defaultDeadline },
+  const [actionRows, setActionRows] = useState<[ActionRow, ActionRow, ActionRow]>(() => [
+    { text: "", owner: "", deadline: initialDeadline },
+    { text: "", owner: "", deadline: initialDeadline },
+    { text: "", owner: "", deadline: initialDeadline },
   ]);
-  const [targetMeeting, setTargetMeeting] = useState<string>(DEFAULT_NEXT_MEETING.name);
+  const [targetMeeting, setTargetMeeting] = useState<string>(() => initialNextMeeting.name);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCommitted, setIsCommitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const next = getNextMeeting();
-    setTargetMeeting((curr) => (curr === DEFAULT_NEXT_MEETING.name ? next.name : curr));
-    setActionRows((prev) => {
-      const apply = (r: ActionRow): ActionRow =>
-        r.deadline === DEFAULT_NEXT_MEETING.date ? { ...r, deadline: next.date } : r;
-      return [apply(prev[0]), apply(prev[1]), apply(prev[2])];
-    });
-  }, []);
 
   const selectedDimension = useMemo(
     () => dimensions.find((d) => d.dimension.name === focusDimension),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   allDimensions,
   getSelections,
@@ -14,13 +15,14 @@ import {
  * ==========================================================================*/
 
 export default function ManageQuestionsPage() {
-  const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [selections, setSelections] = useState<Record<string, string[]>>(() =>
+    typeof window !== "undefined" ? getSelections() : {}
+  );
   const [saved, setSaved] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setSelections(getSelections());
-    setMounted(true);
+    queueMicrotask(() => setMounted(true));
   }, []);
 
   const toggleQuestion = (dimIndex: number, questionId: string) => {
@@ -77,12 +79,12 @@ export default function ManageQuestionsPage() {
             <span className="text-white/15 text-sm">›</span>
             <span className="font-mono text-[10px] text-gold/60 tracking-[0.25em] uppercase">Question Selection</span>
           </div>
-          <a
+          <Link
             href="/"
             className="font-mono text-[9px] tracking-[0.2em] uppercase text-white/30 hover:text-white/70 px-3 py-1.5 border border-transparent hover:border-white/10 rounded-sm transition-colors"
           >
             ← Back to Test
-          </a>
+          </Link>
         </div>
       </div>
 
