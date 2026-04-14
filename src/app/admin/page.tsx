@@ -308,6 +308,12 @@ export default function AdminPage() {
               Commitments
             </a>
             <a
+              href="/admin/manage"
+              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
+            >
+              Manage
+            </a>
+            <a
               href="/"
               className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
             >
