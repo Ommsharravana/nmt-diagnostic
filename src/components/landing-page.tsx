@@ -48,7 +48,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
           </div>
 
           {/* Title */}
-          <h1 className="animate-slide-up stagger-2 font-display text-5xl sm:text-6xl md:text-7xl text-white leading-[1.1] tracking-tight">
+          <h1 className="animate-slide-up stagger-2 font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl text-white leading-[1.1] tracking-tight">
             Vertical
             <br />
             <span className="gold-underline">Diagnostic</span>

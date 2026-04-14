@@ -380,7 +380,8 @@ export default function SummaryPage() {
     }
   };
 
-  const handleCopySummary = async () => {
+  // Build the plain-text summary body shared by Copy Summary and Email Summary.
+  const buildSummaryText = useCallback((): string => {
     const lines: string[] = [];
     const today = new Date().toLocaleDateString("en-IN", {
       day: "numeric",
@@ -410,13 +411,42 @@ export default function SummaryPage() {
         lines.push(`  ${d.dimension}: ${d.count}`);
       }
     }
+    return lines.join("\n");
+  }, [summary]);
+
+  const handleCopySummary = async () => {
     try {
-      await navigator.clipboard.writeText(lines.join("\n"));
+      await navigator.clipboard.writeText(buildSummaryText());
       setCopyLabel("Copied!");
       setTimeout(() => setCopyLabel("Copy Summary"), 2000);
     } catch {
       alert("Clipboard copy failed.");
     }
+  };
+
+  /**
+   * Open the admin's default mail client with a prefilled draft so the summary
+   * can be shared with the National Chair & Vice Chair (Playbook §8).
+   * We have no SMTP — the admin reviews and sends from their own client.
+   */
+  const handleEmailSummary = () => {
+    const subject = "NMT Vertical Diagnostic — Summary Report";
+    const intro = [
+      "Hi,",
+      "",
+      "Please find the latest NMT Vertical Diagnostic summary below.",
+      "",
+      "— — —",
+      "",
+    ].join("\n");
+    const outro = [
+      "",
+      "",
+      "— Sent from the NMT diagnostic tracker",
+    ].join("\n");
+    const body = intro + buildSummaryText() + outro;
+    const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = href;
   };
 
   if (!authenticated) {
@@ -507,13 +537,22 @@ export default function SummaryPage() {
               One-click NMT summary for National Chair &amp; Vice Chair review
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               onClick={handleCopySummary}
               variant="outline"
               className="h-9 px-4 border-navy/15 text-navy text-xs tracking-wider uppercase hover:bg-navy/5"
             >
               {copyLabel}
+            </Button>
+            <Button
+              onClick={handleEmailSummary}
+              disabled={loading || summary.verticalsReported === 0}
+              variant="outline"
+              className="h-9 px-4 border-navy/10 text-navy/60 text-xs tracking-wider uppercase hover:border-gold hover:text-gold disabled:opacity-40"
+              title="Open email draft for National Chair & Vice Chair"
+            >
+              Email Summary to Leadership
             </Button>
             <Button
               onClick={handleDownloadPDF}

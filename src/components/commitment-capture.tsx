@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { getNextMeeting, DEFAULT_NEXT_MEETING } from "@/lib/next-meeting";
 
 interface DimensionEntry {
   dimension: { name: string; shortName: string };
@@ -128,7 +129,9 @@ export default function CommitmentCapture({
   }, [dimensions, weakestDimensionName]);
 
   const initialTargetLevel = Math.min(5, Math.max(currentLevel + 1, 2));
-  const defaultDeadline = useMemo(() => addDays(new Date(), 90), []);
+  // Seed synchronously from DEFAULT_NEXT_MEETING (SSR-safe); the effect
+  // below replaces these with any admin-configured value on mount.
+  const defaultDeadline = DEFAULT_NEXT_MEETING.date;
   const todayYmd = useMemo(() => addDays(new Date(), 0), []);
 
   // --- Header state (chair / co-chair editable if empty) ---
@@ -153,7 +156,28 @@ export default function CommitmentCapture({
   ]);
 
   // --- Target meeting state ---
-  const [targetMeeting, setTargetMeeting] = useState<string>("NMT Madurai");
+  // Seeded synchronously from the default so SSR and first client render match.
+  // The effect below overrides both the meeting name and each row's deadline
+  // with the admin-configured value (if any) once we can safely touch
+  // localStorage.
+  const [targetMeeting, setTargetMeeting] = useState<string>(
+    DEFAULT_NEXT_MEETING.name,
+  );
+
+  useEffect(() => {
+    // Run once on mount to pick up any admin-configured next meeting.
+    const next = getNextMeeting();
+    setTargetMeeting((curr) => (curr === DEFAULT_NEXT_MEETING.name ? next.name : curr));
+    setActionRows((prev) => {
+      // Only replace deadlines that still match the default — never clobber a
+      // deadline the user has already edited.
+      const apply = (r: ActionRow): ActionRow =>
+        r.deadline === DEFAULT_NEXT_MEETING.date
+          ? { ...r, deadline: next.date }
+          : r;
+      return [apply(prev[0]), apply(prev[1]), apply(prev[2])];
+    });
+  }, []);
 
   // --- Submission state ---
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -412,7 +436,9 @@ export default function CommitmentCapture({
           ============================================================= */}
       <section className="mb-8">
         <h3 className={sectionHeadingClass}>Dimension Scores</h3>
-        <div className="overflow-x-auto">
+
+        {/* Desktop: wide table */}
+        <div className="hidden sm:block">
           <table className="w-full border-collapse">
             <thead>
               <tr className="text-left">
@@ -473,6 +499,50 @@ export default function CommitmentCapture({
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile: stacked cards */}
+        <div className="sm:hidden space-y-3">
+          {dimensions.map((d, idx) => {
+            const healthClass =
+              healthBadgeClass[d.health] ??
+              "bg-navy/5 border-navy/10 text-navy/60";
+            const obsValue = dimensionObservations[String(idx)] ?? "";
+            return (
+              <div
+                key={d.dimension.name}
+                className="border border-navy/10 rounded-lg p-3 space-y-2 bg-white/50"
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <span className="font-medium text-sm text-navy leading-snug">
+                    {d.dimension.name}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-semibold text-navy tabular-nums">
+                      {d.score}/{d.maxScore}
+                    </span>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full border text-[9px] font-semibold uppercase tracking-wider ${healthClass}`}
+                    >
+                      {d.health}
+                    </span>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={obsValue}
+                  onChange={(e) =>
+                    handleObservationChange(idx, e.target.value)
+                  }
+                  disabled={disabled}
+                  maxLength={500}
+                  placeholder="Optional observation"
+                  className={smallInputClass}
+                  aria-label={`Quick observation for ${d.dimension.name}`}
+                />
+              </div>
+            );
+          })}
         </div>
       </section>
 

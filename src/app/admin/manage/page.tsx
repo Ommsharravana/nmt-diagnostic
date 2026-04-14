@@ -12,6 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  getNextMeeting,
+  setNextMeeting,
+  DEFAULT_NEXT_MEETING,
+  type NextMeeting,
+} from "@/lib/next-meeting";
 
 /* ============================================================================
  * Types
@@ -23,7 +29,8 @@ type TabKey =
   | "dimensions"
   | "questions"
   | "assessments"
-  | "commitments";
+  | "commitments"
+  | "settings";
 
 interface VerticalRow {
   id: string;
@@ -265,6 +272,7 @@ export default function ManagePage() {
     questions: false,
     assessments: false,
     commitments: false,
+    settings: false,
   });
   const [errors, setErrors] = useState<Record<TabKey, string | null>>({
     verticals: null,
@@ -273,6 +281,7 @@ export default function ManagePage() {
     questions: null,
     assessments: null,
     commitments: null,
+    settings: null,
   });
 
   /* -------------------------- Auth Gate -------------------------- */
@@ -386,7 +395,7 @@ export default function ManagePage() {
   ]);
 
   /* ---------------------------- Counts ---------------------------- */
-  const counts = useMemo(
+  const counts = useMemo<Record<TabKey, number | null>>(
     () => ({
       verticals: verticals.length,
       regions: regions.length,
@@ -394,6 +403,8 @@ export default function ManagePage() {
       questions: questions.length,
       assessments: assessments.length,
       commitments: commitments.length,
+      // Settings is a single config row — no meaningful count to show.
+      settings: null,
     }),
     [
       verticals.length,
@@ -421,6 +432,7 @@ export default function ManagePage() {
     { key: "questions", label: "Questions" },
     { key: "assessments", label: "Assessments" },
     { key: "commitments", label: "Commitments" },
+    { key: "settings", label: "Settings" },
   ];
 
   return (
@@ -485,14 +497,16 @@ export default function ManagePage() {
                     : "border-b-2 border-transparent text-navy/40 hover:text-navy"
                 }`}
               >
-                {tab.label}{" "}
-                <span
-                  className={`ml-1 tabular-nums ${
-                    isActive ? "text-gold" : "text-navy/30"
-                  }`}
-                >
-                  ({count})
-                </span>
+                {tab.label}
+                {count !== null && (
+                  <span
+                    className={`ml-1 tabular-nums ${
+                      isActive ? "text-gold" : "text-navy/30"
+                    }`}
+                  >
+                    ({count})
+                  </span>
+                )}
               </button>
             );
           })}
@@ -562,6 +576,8 @@ export default function ManagePage() {
             refetch={loadCommitments}
           />
         )}
+
+        {activeTab === "settings" && <SettingsPanel />}
       </div>
     </div>
   );
@@ -2196,6 +2212,136 @@ function CommitmentsPanel({
             </table>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ============================================================================
+ * Settings Panel (Next NMT meeting)
+ * ==========================================================================*/
+
+function SettingsPanel() {
+  // Seed with the synchronous default so SSR and first render match.
+  // The effect below pulls the admin-saved value from localStorage on mount.
+  const [name, setName] = useState<string>(DEFAULT_NEXT_MEETING.name);
+  const [date, setDate] = useState<string>(DEFAULT_NEXT_MEETING.date);
+  const [savedName, setSavedName] = useState<string>(DEFAULT_NEXT_MEETING.name);
+  const [savedDate, setSavedDate] = useState<string>(DEFAULT_NEXT_MEETING.date);
+  const [saveLabel, setSaveLabel] = useState<string>("Save");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const current = getNextMeeting();
+    setName(current.name);
+    setDate(current.date);
+    setSavedName(current.name);
+    setSavedDate(current.date);
+  }, []);
+
+  const trimmedName = name.trim();
+  const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const dirty = trimmedName !== savedName || date !== savedDate;
+  const canSave = dirty && trimmedName.length > 0 && dateValid;
+
+  const handleSave = () => {
+    setValidationError(null);
+    if (trimmedName.length === 0) {
+      setValidationError("Meeting name is required.");
+      return;
+    }
+    if (!dateValid) {
+      setValidationError("Please pick a valid date.");
+      return;
+    }
+    const next: NextMeeting = { name: trimmedName, date };
+    setNextMeeting(next);
+    setSavedName(trimmedName);
+    setSavedDate(date);
+    setSaveLabel("Saved!");
+    window.setTimeout(() => setSaveLabel("Save"), 2000);
+  };
+
+  const handleReset = () => {
+    setName(DEFAULT_NEXT_MEETING.name);
+    setDate(DEFAULT_NEXT_MEETING.date);
+    setValidationError(null);
+  };
+
+  return (
+    <Card className="border border-navy/5 shadow-none bg-white">
+      <CardContent className="p-0">
+        <div className="p-5 border-b border-navy/5">
+          <SectionLabel>Settings</SectionLabel>
+          <h2 className="font-display text-xl text-navy mt-1">
+            Next NMT Meeting
+          </h2>
+          <p className="text-xs text-navy/50 mt-1">
+            This name and date default onto every new commitment form.
+          </p>
+        </div>
+
+        <div className="p-5 space-y-5 max-w-2xl">
+          <div>
+            <label
+              htmlFor="next-meeting-name"
+              className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold block mb-1"
+            >
+              Meeting Name
+            </label>
+            <input
+              id="next-meeting-name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={100}
+              placeholder="e.g. NMT Madurai"
+              className="w-full px-3 py-2 rounded-md border border-navy/10 bg-white text-sm text-navy"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="next-meeting-date"
+              className="text-[10px] tracking-[0.15em] uppercase text-navy/40 font-semibold block mb-1"
+            >
+              Meeting Date
+            </label>
+            <input
+              id="next-meeting-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-md border border-navy/10 bg-white text-sm text-navy"
+            />
+          </div>
+
+          {validationError && (
+            <p className="text-sm text-red-600">{validationError}</p>
+          )}
+
+          <div className="flex items-center gap-3 pt-2">
+            <Button
+              onClick={handleSave}
+              disabled={!canSave}
+              className="bg-navy hover:bg-navy-light text-white text-xs tracking-wider uppercase disabled:opacity-40"
+            >
+              {saveLabel}
+            </Button>
+            <Button
+              onClick={handleReset}
+              variant="outline"
+              className="border-navy/10 text-navy/60 text-xs tracking-wider uppercase"
+            >
+              Reset to Default
+            </Button>
+            <span className="text-[11px] text-navy/40 ml-auto">
+              Currently saved:{" "}
+              <span className="text-navy/60 font-medium">{savedName}</span> ·{" "}
+              <span className="text-navy/60 tabular-nums">{savedDate}</span>
+            </span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

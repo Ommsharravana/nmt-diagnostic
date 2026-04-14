@@ -423,12 +423,12 @@ const DimensionStep = forwardRef<
       <div
         ref={ref}
         tabIndex={-1}
-        className={`bg-gradient-to-r ${dimensionColors[stepNumber - 1]} rounded-xl p-6 text-white shadow-lg outline-none`}
+        className={`bg-gradient-to-r ${dimensionColors[stepNumber - 1]} rounded-xl p-4 sm:p-6 text-white shadow-lg outline-none`}
       >
-        <p className="text-sm font-medium opacity-80">
+        <p className="text-xs sm:text-sm font-medium opacity-80">
           Dimension {stepNumber} of 7
         </p>
-        <h2 className="font-display text-2xl mt-1">{dimension.name}</h2>
+        <h2 className="font-display text-xl sm:text-2xl mt-1">{dimension.name}</h2>
         <p className="text-sm opacity-80 mt-2">
           Rate each statement from 1 (Strongly Disagree) to 5 (Strongly Agree)
         </p>
@@ -456,13 +456,13 @@ const DimensionStep = forwardRef<
               {question.text}
             </p>
 
-            {/* Rating buttons */}
-            <div className="flex gap-2" role="group" aria-label={`Rating for statement ${index + 1}`}>
+            {/* Rating buttons — min 44px tap target per WCAG */}
+            <div className="flex gap-1.5 sm:gap-2" role="group" aria-label={`Rating for statement ${index + 1}`}>
               {ratingLabels.map((rating) => (
                 <button
                   key={rating.value}
                   onClick={() => onAnswer(question.id, rating.value)}
-                  className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  className={`flex-1 min-h-[44px] py-2.5 sm:py-3 rounded-lg text-base sm:text-sm font-semibold transition-all ${
                     answers[question.id] === rating.value
                       ? "bg-navy text-white shadow-md scale-105"
                       : "bg-navy/5 text-navy/50 hover:bg-navy/10"

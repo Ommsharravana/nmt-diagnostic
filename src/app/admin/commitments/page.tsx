@@ -152,6 +152,89 @@ function formatDeadline(value: string | null | undefined): string {
   });
 }
 
+/**
+ * Build a mailto: link for sharing a vertical scorecard with its Chair and
+ * Co-Chair. We don't have SMTP — this just opens the admin's default mail
+ * client with a prefilled subject and body so they can review and send.
+ */
+function buildChairMailto(c: Commitment): string {
+  const subject = `Your NMT Diagnostic Scorecard — ${c.vertical_name}`;
+
+  const greetingNames = [c.chair_name, c.co_chair_name]
+    .map((n) => (n ? n.trim() : ""))
+    .filter((n) => n.length > 0);
+  const greeting =
+    greetingNames.length > 0 ? `Hi ${greetingNames.join(" and ")},` : "Hi,";
+
+  const lines: string[] = [];
+
+  // If we don't know recipients, put a prompt at the top so the admin can
+  // paste them into the To: field before sending.
+  if (greetingNames.length === 0) {
+    lines.push(
+      "Send to: (add Chair & Co-Chair email addresses in the To: field)",
+    );
+    lines.push("");
+  } else if (!c.chair_name || !c.co_chair_name) {
+    lines.push(
+      `Send to: ${greetingNames.join(" and ")} (add missing addresses as needed)`,
+    );
+    lines.push("");
+  }
+
+  lines.push(greeting);
+  lines.push("");
+  lines.push(
+    `Here is the scorecard for ${c.vertical_name} from the recent NMT diagnostic.`,
+  );
+  lines.push("");
+
+  // Focus dimension + level ladder
+  lines.push(
+    `Focus dimension: ${c.focus_dimension} (${c.focus_dimension_score}/25)`,
+  );
+  lines.push(`Maturity movement: L${c.current_level} → L${c.target_level}`);
+
+  if (c.focus_reason && c.focus_reason.trim().length > 0) {
+    lines.push("");
+    lines.push(`Why this dimension: ${c.focus_reason.trim()}`);
+  }
+
+  // Prefer detailed action items; fall back to legacy strings.
+  const detailed = Array.isArray(c.action_items_detailed)
+    ? c.action_items_detailed
+    : null;
+
+  if (detailed && detailed.length > 0) {
+    lines.push("");
+    lines.push("Action commitments:");
+    detailed.forEach((item, i) => {
+      const parts: string[] = [`${i + 1}. ${item.text}`];
+      if (item.owner) parts.push(`Owner: ${item.owner}`);
+      if (item.deadline)
+        parts.push(`Deadline: ${formatDeadline(item.deadline)}`);
+      lines.push(parts.join(" — "));
+    });
+  } else if (Array.isArray(c.action_items) && c.action_items.length > 0) {
+    lines.push("");
+    lines.push("Action commitments:");
+    c.action_items.forEach((text, i) => lines.push(`${i + 1}. ${text}`));
+  }
+
+  if (c.target_meeting) {
+    lines.push("");
+    lines.push(
+      `Follow-up review at: ${c.target_meeting}${c.target_date ? ` (${formatDeadline(c.target_date)})` : ""}`,
+    );
+  }
+
+  lines.push("");
+  lines.push("— Sent from the NMT diagnostic tracker");
+
+  const body = lines.join("\n");
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 export default function CommitmentsPage() {
   const [storedPassword, setStoredPassword] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
@@ -179,7 +262,9 @@ export default function CommitmentsPage() {
   // Expanded "Quick observations" section state — keyed by commitment id
   const [obsOpen, setObsOpen] = useState<Record<string, boolean>>({});
 
-  // Check session - redirect if not authenticated
+  // Check session - redirect if not authenticated.
+  // Also honor ?vertical=<name> to preselect the vertical filter (used by the
+  // live dashboard's "Present Commitments" shortcut).
   useEffect(() => {
     const saved = sessionStorage.getItem("nmt-admin-pw");
     if (!saved) {
@@ -188,6 +273,12 @@ export default function CommitmentsPage() {
     }
     setStoredPassword(saved);
     setAuthenticated(true);
+
+    if (typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      const v = sp.get("vertical");
+      if (v && v.trim().length > 0) setFilterVertical(v);
+    }
   }, []);
 
   const fetchCommitments = useCallback(async () => {
@@ -544,16 +635,25 @@ export default function CommitmentsPage() {
                                     {headerMeta || "—"}
                                   </p>
                                 </div>
-                                <p className="text-[10px] text-navy/40 tabular-nums whitespace-nowrap">
-                                  {new Date(c.created_at).toLocaleDateString(
-                                    "en-IN",
-                                    {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    },
-                                  )}
-                                </p>
+                                <div className="flex flex-col items-end gap-1.5 whitespace-nowrap">
+                                  <p className="text-[10px] text-navy/40 tabular-nums">
+                                    {new Date(c.created_at).toLocaleDateString(
+                                      "en-IN",
+                                      {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                      },
+                                    )}
+                                  </p>
+                                  <a
+                                    href={buildChairMailto(c)}
+                                    className="inline-flex items-center h-7 px-3 rounded-md border border-navy/10 text-navy/60 text-[10px] tracking-[0.15em] uppercase font-semibold hover:border-gold hover:text-gold transition-colors"
+                                    title="Open email draft to Chair & Co-Chair"
+                                  >
+                                    Email Chairs
+                                  </a>
+                                </div>
                               </div>
 
                               <div className="flex items-center gap-3 text-sm">
@@ -798,6 +898,16 @@ export default function CommitmentsPage() {
                               >
                                 {savingId === c.id ? "Saving..." : "Save"}
                               </Button>
+
+                              <a
+                                href={`/admin/present/${c.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full h-9 rounded-lg border border-gold/40 text-gold hover:bg-gold/5 text-xs tracking-wider uppercase inline-flex items-center justify-center transition-colors"
+                                title="Open full-screen presentation view in a new tab"
+                              >
+                                Present
+                              </a>
                             </div>
                           </div>
                         </CardContent>

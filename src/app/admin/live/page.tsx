@@ -417,6 +417,22 @@ export default function AdminLivePage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Present commitments — Run-Sheet step 7 shortcut */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(
+                        `/admin/commitments?vertical=${encodeURIComponent(a.vertical_name)}`,
+                        "_blank",
+                      );
+                    }}
+                    title="Open the commitments tracker filtered to this vertical"
+                    className="mt-3 w-full h-8 rounded-md border border-gold/30 text-gold/90 hover:bg-gold/5 hover:border-gold/60 text-[10px] tracking-[0.2em] uppercase inline-flex items-center justify-center transition-colors"
+                  >
+                    Present Commitments
+                  </button>
                 </div>
               );
             })}

@@ -227,10 +227,10 @@ export default function ResultsDashboard({
             {/* Maturity level — the centrepiece */}
             <div className="animate-count stagger-4 mt-10">
               <div className="inline-flex flex-col items-center">
-                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-[3px] border-gold/40 flex items-center justify-center relative">
+                <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full border-[3px] border-gold/40 flex items-center justify-center relative">
                   <div className="absolute inset-2 rounded-full border border-gold/20" />
                   <div className="text-center">
-                    <div className="font-display text-5xl sm:text-6xl text-white">
+                    <div className="font-display text-4xl sm:text-5xl md:text-6xl text-white">
                       {results.maturity.level}
                     </div>
                     <div className="text-[10px] tracking-[0.2em] uppercase text-gold/60 -mt-1">
@@ -355,14 +355,14 @@ export default function ResultsDashboard({
           <div className="animate-slide-up stagger-8">
             <SectionLabel>Dimension Overview</SectionLabel>
             <Card className="border border-navy/5 shadow-none bg-white">
-              <CardContent className="p-6">
-                <div className="h-80 w-full">
+              <CardContent className="p-4 sm:p-6">
+                <div className="h-60 sm:h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={radarData} cx="50%" cy="50%">
                       <PolarGrid stroke="#e8e5df" />
                       <PolarAngleAxis
                         dataKey="dimension"
-                        tick={{ fontSize: 11, fill: "#6b6b6b", fontFamily: "var(--font-body)" }}
+                        tick={{ fontSize: 9, fill: "#6b6b6b", fontFamily: "var(--font-body)" }}
                       />
                       <PolarRadiusAxis
                         angle={90}
