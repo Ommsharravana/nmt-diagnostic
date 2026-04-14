@@ -236,6 +236,18 @@ export default function AdminPage() {
               Export CSV
             </Button>
             <a
+              href="/admin/live"
+              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
+            >
+              Live View
+            </a>
+            <a
+              href="/admin/commitments"
+              className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
+            >
+              Commitments
+            </a>
+            <a
               href="/"
               className="h-9 px-4 rounded-lg border border-white/10 text-white/60 hover:text-gold hover:border-gold/30 text-xs tracking-wider uppercase inline-flex items-center"
             >

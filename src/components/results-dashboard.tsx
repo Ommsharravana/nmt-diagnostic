@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { OverallResult, DimensionResult, HealthStatus } from "@/lib/types";
 import { getRecommendations } from "@/lib/recommendations";
 import { generateDeepInsights } from "@/lib/insights";
+import CommitmentCapture from "@/components/commitment-capture";
 import {
   RadarChart,
   PolarGrid,
@@ -492,6 +493,21 @@ export default function ResultsDashboard({
               })}
             </div>
           </div>
+
+          {/* COMMITMENT CAPTURE — only after save */}
+          {assessmentId && (
+            <div>
+              <CommitmentCapture
+                assessmentId={assessmentId}
+                verticalName={results.verticalName}
+                region={results.region}
+                respondentName={results.respondentName}
+                dimensions={results.dimensions}
+                currentLevel={results.maturity.level}
+                weakestDimensionName={results.weakest[0]?.dimension.name || ""}
+              />
+            </div>
+          )}
 
           {/* DETAILED RECOMMENDATIONS */}
           <div>
