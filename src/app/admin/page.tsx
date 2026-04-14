@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, startTransition } from "react";
+import { useRouter } from "next/navigation";
 import { verticals, regions } from "@/lib/yi-data";
 import {
   RadarChart,
@@ -257,6 +258,7 @@ function LoginScreen({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
+  const router = useRouter();
   const [password, setPassword] = useState("");
   const [storedPassword, setStoredPassword] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -684,7 +686,7 @@ export default function AdminPage() {
                         if (compareMode) {
                           toggleCompare(row.id);
                         } else {
-                          window.open(`/results/${row.id}`, "_blank");
+                          router.push(`/results/${row.id}`);
                         }
                       }}
                     >
@@ -757,7 +759,7 @@ export default function AdminPage() {
               }`}
               onClick={() => {
                 if (compareMode) toggleCompare(row.id);
-                else window.open(`/results/${row.id}`, "_blank");
+                else router.push(`/results/${row.id}`);
               }}
             >
               <div className="flex items-start justify-between gap-3 mb-2">

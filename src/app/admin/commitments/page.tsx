@@ -67,6 +67,34 @@ async function patchCommitment(
   }
 }
 
+async function deleteCommitmentRequest(
+  id: string,
+  pw: string,
+): Promise<{ ok?: true; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(`/api/admin/commitments/${id}`, {
+      method: "DELETE",
+      headers: { "x-admin-password": pw },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      let msg = `Delete failed: ${res.status} ${res.statusText}`;
+      try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* ignore */ }
+      return { error: msg };
+    }
+    return { ok: true };
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { error: "Delete timed out. Please check your connection and retry." };
+    }
+    return { error: "Delete failed. Please try again." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function updateActionItem(
   id: string,
   index: number,
@@ -333,6 +361,8 @@ function CommitmentCard({
   onUpdateItemEdit,
   onSave,
   onSaveItem,
+  onDelete,
+  deletingId,
   onToggleObs,
 }: {
   c: Commitment;
@@ -345,6 +375,8 @@ function CommitmentCard({
   onUpdateItemEdit: (cid: string, idx: number, patch: Partial<{ status: StatusType; notes: string }>) => void;
   onSave: (id: string) => void;
   onSaveItem: (cid: string, idx: number) => void;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
   onToggleObs: (id: string) => void;
 }) {
   const edit = edits[c.id] ?? { status: c.status, completion_notes: c.completion_notes ?? "" };
@@ -567,14 +599,24 @@ function CommitmentCard({
             </div>
           )}
 
-          {/* Save button */}
-          <button
-            onClick={() => onSave(c.id)}
-            disabled={!isDirty || savingId === c.id}
-            className="w-full h-8 rounded-sm bg-[#0c1425] text-white text-[10px] tracking-[0.18em] uppercase font-bold hover:bg-[#162033] disabled:opacity-30 transition-colors"
-          >
-            {savingId === c.id ? "Saving…" : "Save"}
-          </button>
+          {/* Save + Delete buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => onSave(c.id)}
+              disabled={!isDirty || savingId === c.id}
+              className="flex-1 h-8 rounded-sm bg-[#0c1425] text-white text-[10px] tracking-[0.18em] uppercase font-bold hover:bg-[#162033] disabled:opacity-30 transition-colors"
+            >
+              {savingId === c.id ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => onDelete(c.id)}
+              disabled={deletingId === c.id}
+              title="Delete this commitment — cannot be undone"
+              className="h-8 px-3 rounded-sm border border-red-600/40 text-red-700 text-[10px] tracking-[0.18em] uppercase font-bold hover:bg-red-50 hover:border-red-600 disabled:opacity-30 transition-colors"
+            >
+              {deletingId === c.id ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -609,6 +651,7 @@ export default function CommitmentsPage() {
     Record<string, { status: StatusType; completion_notes: string }>
   >({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [itemEdits, setItemEdits] = useState<
     Record<string, { status: StatusType; notes: string }>
@@ -700,6 +743,15 @@ export default function CommitmentsPage() {
     if (result.error) alert(result.error);
     else await fetchCommitments();
     setSavingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Delete this commitment permanently? This cannot be undone.")) return;
+    setDeletingId(id);
+    const result = await deleteCommitmentRequest(id, storedPassword);
+    if (result.error) alert(result.error);
+    else await fetchCommitments();
+    setDeletingId(null);
   };
 
   const handleSaveItem = async (commitmentId: string, index: number) => {
@@ -902,6 +954,8 @@ export default function CommitmentsPage() {
                       onUpdateItemEdit={updateItemEdit}
                       onSave={handleSave}
                       onSaveItem={handleSaveItem}
+                      onDelete={handleDelete}
+                      deletingId={deletingId}
                       onToggleObs={(id) => setObsOpen((prev) => ({ ...prev, [id]: !prev[id] }))}
                     />
                   ))}
