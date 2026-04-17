@@ -710,9 +710,19 @@ export default function CommitmentCapture({
           </button>
 
           {!canSubmit && !disabled && (
-            <p className="text-[11px] text-navy/35 mt-3">
-              Complete all required fields to submit
-            </p>
+            <div className="mt-3 border-l-2 border-red-400/50 pl-3 py-1">
+              <p className="text-[11px] font-semibold text-red-600 mb-1 tracking-wide uppercase">
+                {missingCount} required field{missingCount === 1 ? "" : "s"} missing
+              </p>
+              <ul className="text-[11px] text-navy/60 space-y-0.5">
+                {missingList.map((m, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <span className="text-red-500/70 font-mono">•</span>
+                    <span>{m}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       </div>
