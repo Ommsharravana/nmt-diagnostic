@@ -569,6 +569,17 @@ export default function AdminManagePage() {
     else if (activeTab === "commitments") void loadCommitments();
   }, [activeTab, authChecked, storedPassword, loadVerticals, loadRegions, loadDimensions, loadQuestions, loadAssessments, loadCommitments]);
 
+  // Populate all tab counts on first mount so [0] reflects DB, not initial empty state
+  useEffect(() => {
+    if (!authChecked || !storedPassword) return;
+    void loadVerticals();
+    void loadRegions();
+    void loadDimensions();
+    void loadQuestions();
+    void loadAssessments();
+    void loadCommitments();
+  }, [authChecked, storedPassword, loadVerticals, loadRegions, loadDimensions, loadQuestions, loadAssessments, loadCommitments]);
+
   const counts = useMemo<Record<TabKey, number | null>>(
     () => ({
       verticals: verticals.length, regions: regions.length,
