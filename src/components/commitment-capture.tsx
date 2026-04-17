@@ -621,7 +621,7 @@ export default function CommitmentCapture({
                           required
                           maxLength={100}
                           placeholder="Who is accountable?"
-                          className={INPUT_SM}
+                          className={`${INPUT_SM} ${fieldMissing.actions[idx].owner ? "border-red-400/60" : ""}`}
                         />
                       </div>
                       <div>
