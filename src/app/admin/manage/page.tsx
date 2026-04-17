@@ -1402,7 +1402,7 @@ function AssessmentsPanel({ rows, loading, error, pw, refetch }: {
               {rows.map((row, i) => (
                 <tr
                   key={row.id}
-                  onClick={() => window.open(`/results/${row.id}`, "_blank")}
+                  onClick={() => router.push(`/results/${row.id}`)}
                   className={`border-b border-navy/[0.045] hover:bg-gold/[0.025] cursor-pointer transition-colors ${i % 2 === 0 ? "" : "bg-navy/[0.008]"}`}
                 >
                   <td className="px-4 py-3 font-medium text-navy text-sm">{row.vertical_name}</td>
