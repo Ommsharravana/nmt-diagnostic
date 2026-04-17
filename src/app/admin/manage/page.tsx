@@ -1437,7 +1437,9 @@ function AssessmentsPanel({ rows, loading, error, pw, refetch }: {
 function CommitmentsPanel({ rows, loading, error, pw, refetch }: {
   rows: CommitmentRow[]; loading: boolean; error: string | null; pw: string; refetch: () => void;
 }) {
-  const handleDelete = async (row: CommitmentRow) => {
+  const router = useRouter();
+  const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>, row: CommitmentRow) => {
+    e.stopPropagation();
     if (!confirm(`Delete commitment for "${row.vertical_name}"? This cannot be undone.`)) return;
     const r = await deleteEntity(`/api/admin/commitments/${row.id}`, pw);
     if (r.error) { alert(r.error); return; }
