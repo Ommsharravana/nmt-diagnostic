@@ -1467,7 +1467,11 @@ function CommitmentsPanel({ rows, loading, error, pw, refetch }: {
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={row.id} className={`border-b border-navy/[0.045] hover:bg-gold/[0.025] transition-colors ${i % 2 === 0 ? "" : "bg-navy/[0.008]"}`}>
+                <tr
+                  key={row.id}
+                  onClick={() => router.push(`/admin/present/${row.id}`)}
+                  className={`border-b border-navy/[0.045] hover:bg-gold/[0.025] cursor-pointer transition-colors ${i % 2 === 0 ? "" : "bg-navy/[0.008]"}`}
+                >
                   <td className="px-4 py-3 font-medium text-navy text-sm">{row.vertical_name}</td>
                   <td className="px-4 py-3 text-navy/70 text-sm">{row.focus_dimension}</td>
                   <td className="px-4 py-3 text-center font-mono text-xs text-navy/60 tabular-nums">
@@ -1482,7 +1486,7 @@ function CommitmentsPanel({ rows, loading, error, pw, refetch }: {
                     {row.target_meeting ? formatDate(row.target_meeting) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <ActionBtn variant="danger" small onClick={() => handleDelete(row)}>delete</ActionBtn>
+                    <ActionBtn variant="danger" small onClick={(e) => handleDelete(e, row)}>delete</ActionBtn>
                   </td>
                 </tr>
               ))}
