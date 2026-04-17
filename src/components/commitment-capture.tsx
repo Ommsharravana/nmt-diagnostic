@@ -175,6 +175,28 @@ export default function CommitmentCapture({
   );
   const canSubmit = reasonValid && actionsValid && !!selectedDimension;
 
+  // Per-field validity for inline error highlighting
+  const fieldMissing = {
+    dimension: !selectedDimension,
+    reason: !reasonValid,
+    actions: actionRows.map((r) => ({
+      text: r.text.trim().length === 0,
+      owner: r.owner.trim().length === 0,
+      deadline: !/^\d{4}-\d{2}-\d{2}$/.test(r.deadline),
+    })),
+  };
+  const missingList: string[] = [];
+  if (fieldMissing.dimension) missingList.push("Focus dimension");
+  if (fieldMissing.reason) missingList.push("Why this dimension");
+  fieldMissing.actions.forEach((a, i) => {
+    const miss: string[] = [];
+    if (a.text) miss.push("description");
+    if (a.owner) miss.push("owner");
+    if (a.deadline) miss.push("deadline");
+    if (miss.length > 0) missingList.push(`Action ${i + 1}: ${miss.join(" + ")}`);
+  });
+  const missingCount = missingList.length;
+
   const handleSubmit = async () => {
     setErrorMessage(null);
     setValidationMessage(null);
