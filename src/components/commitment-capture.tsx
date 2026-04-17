@@ -545,7 +545,7 @@ export default function CommitmentCapture({
                 maxLength={1000}
                 rows={3}
                 placeholder="What specifically holds this dimension back, and why is it the right lever to pull now?"
-                className={`${INPUT} resize-y leading-relaxed`}
+                className={`${INPUT} resize-y leading-relaxed ${fieldMissing.reason ? "border-red-400/60" : ""}`}
               />
               <div className="flex justify-between mt-1.5">
                 <span className="text-[10px] text-navy/30">
