@@ -602,7 +602,7 @@ export default function CommitmentCapture({
                         maxLength={500}
                         rows={2}
                         placeholder="Be specific and measurable..."
-                        className={`${INPUT} resize-y text-sm leading-relaxed`}
+                        className={`${INPUT} resize-y text-sm leading-relaxed ${fieldMissing.actions[idx].text ? "border-red-400/60" : ""}`}
                       />
                     </div>
 
