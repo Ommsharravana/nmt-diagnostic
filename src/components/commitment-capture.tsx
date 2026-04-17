@@ -635,7 +635,7 @@ export default function CommitmentCapture({
                           onChange={(e) => handleActionChange(idx, "deadline", e.target.value)}
                           disabled={disabled}
                           required
-                          className={INPUT_SM}
+                          className={`${INPUT_SM} ${fieldMissing.actions[idx].deadline ? "border-red-400/60" : ""}`}
                         />
                       </div>
                     </div>
