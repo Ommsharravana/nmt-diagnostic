@@ -1370,6 +1370,7 @@ function QuestionsPanel({ rows, dimensions, loading, error, pw, refetch, refetch
 function AssessmentsPanel({ rows, loading, error, pw, refetch }: {
   rows: AssessmentRow[]; loading: boolean; error: string | null; pw: string; refetch: () => void;
 }) {
+  const router = useRouter();
   const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>, row: AssessmentRow) => {
     e.stopPropagation();
     if (!confirm("Permanently delete this assessment?")) return;
